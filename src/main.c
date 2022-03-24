@@ -1,10 +1,10 @@
-#include "gdb.h"
+#include "dbg.h"
 #define CMD "./bin/hello"
 
 int main()
 {
-    gdb_t gdb;
-    gdb_init(&gdb, CMD);
-    gdb_run(&gdb);
+    dbg_t dbg;
+    dbg_init(&dbg, CMD);
+    dbg_run(&dbg);
     return 0;
 }
