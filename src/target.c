@@ -26,3 +26,16 @@ int target_lauch(target_t *t, char *cmd)
 
     return 0;
 }
+
+int target_conti(target_t *t)
+{
+    int wstatus;
+    ptrace(PTRACE_CONT, t->pid, NULL, NULL);
+
+    if (waitpid(t->pid, &wstatus, __WALL) < 0) {
+        perror("waitpid");
+        return -1;
+    }
+
+    return 0;
+}

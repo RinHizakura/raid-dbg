@@ -1,4 +1,53 @@
 #include "dbg.h"
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "linenoise.h"
+
+static dbg_t *gDbg;
+
+typedef bool (*cmd_func)(int argc, char *argv[]);
+
+struct cmd_entry {
+    struct list_head node;
+    char *name;
+    char *description;
+    cmd_func op;
+};
+
+static int dbg_add_cmd(dbg_t *dbg, char *name, cmd_func op, char *description)
+{
+    struct cmd_entry *entry = malloc(sizeof(struct cmd_entry));
+    if (!entry)
+        return -1;
+    INIT_LIST_HEAD(&entry->node);
+
+    entry->name = name;
+    entry->description = description;
+    entry->op = op;
+
+    list_add_tail(&entry->node, &dbg->list);
+    return 0;
+}
+
+static bool do_help(int argc, char *argv[])
+{
+    struct cmd_entry *item, *tmp;
+
+    list_for_each_entry_safe(item, tmp, &gDbg->list, node)
+    {
+        printf("%s | %s\n", item->name, item->description);
+        ;
+    }
+    return true;
+}
+
+static bool do_cont(int argc, char *argv[])
+{
+    return true;
+}
 
 int dbg_init(dbg_t *dbg, char *cmd)
 {
@@ -6,14 +55,42 @@ int dbg_init(dbg_t *dbg, char *cmd)
     if (ret)
         return ret;
 
-    ret = console_init(&dbg->console);
-    if (ret)
-        return ret;
+    gDbg = dbg;
+    INIT_LIST_HEAD(&dbg->list);
 
+    dbg_add_cmd(dbg, "help", do_help, " print me!");
+    dbg_add_cmd(dbg, "cont", do_cont, " restart the stopped tracee process.");
     return 0;
+}
+
+static bool dbg_match_cmd(int argc, char *argv[])
+{
+    bool ret = false;
+    struct cmd_entry *item, *tmp;
+
+    list_for_each_entry_safe(item, tmp, &gDbg->list, node)
+    {
+        if (!strcmp(item->name, "help")) {
+            ret = item->op(argc, argv);
+            break;
+        }
+    }
+
+    return ret;
 }
 
 void dbg_run(dbg_t *dbg)
 {
-    console_run(&dbg->console);
+    bool ret;
+    int argc;
+    char **argv;
+
+    char *line;
+    while ((line = linenoise("(raid)")) != NULL) {
+        if (!strcmp(line, "help"))
+            ret = dbg_match_cmd(argc, argv);
+        else
+            printf("echo %s\n", line);
+        linenoiseFree(line);
+    }
 }
