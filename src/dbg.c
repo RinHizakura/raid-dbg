@@ -46,7 +46,7 @@ static bool do_help(int argc, char *argv[])
 
 static bool do_cont(int argc, char *argv[])
 {
-    return true;
+    return !target_conti(&gDbg->target);
 }
 
 int dbg_init(dbg_t *dbg, char *cmd)
@@ -70,12 +70,16 @@ static bool dbg_match_cmd(int argc, char *argv[])
 
     list_for_each_entry_safe(item, tmp, &gDbg->list, node)
     {
-        if (!strcmp(item->name, "help")) {
+        if (!strcmp(item->name, argv[0])) {
             ret = item->op(argc, argv);
-            break;
+            goto cmd_found;
         }
     }
 
+    fprintf(stderr, "Command %s not found\n", argv[0]);
+    return false;
+
+cmd_found:
     return ret;
 }
 
@@ -87,10 +91,7 @@ void dbg_run(dbg_t *dbg)
 
     char *line;
     while ((line = linenoise("(raid)")) != NULL) {
-        if (!strcmp(line, "help"))
-            ret = dbg_match_cmd(argc, argv);
-        else
-            printf("echo %s\n", line);
+        ret = dbg_match_cmd(1, &line);
         linenoiseFree(line);
     }
 }
