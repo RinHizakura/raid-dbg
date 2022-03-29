@@ -39,3 +39,8 @@ int target_conti(target_t *t)
 
     return 0;
 }
+
+int target_set_breakpoint(target_t *t, size_t addr)
+{
+    return bp_set(&t->bp[0], t->pid, addr);
+}
