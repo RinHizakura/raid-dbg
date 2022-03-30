@@ -52,12 +52,12 @@ static bool do_cont(__attribute__((unused)) int argc,
 
 static bool do_break(int argc, char *argv[])
 {
-    if (argc == 2)
-        printf("%s %s\n", argv[0], argv[1]);
-    else
-        printf("%d\n", argc);
+    if (argc != 2)
+        return false;
 
-    return true;
+    size_t addr;
+    sscanf(argv[1], "%lx", &addr);
+    return !target_set_breakpoint(&gDbg->target, addr);
 }
 
 static bool cmd_maybe(const char *target, const char *src)
