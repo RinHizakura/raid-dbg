@@ -32,7 +32,8 @@ static int dbg_add_cmd(dbg_t *dbg, char *name, cmd_func op, char *description)
     return 0;
 }
 
-static bool do_help(int argc, char *argv[])
+static bool do_help(__attribute__((unused)) int argc,
+                    __attribute__((unused)) char *argv[])
 {
     struct cmd_entry *item, *tmp;
 
@@ -44,7 +45,8 @@ static bool do_help(int argc, char *argv[])
     return true;
 }
 
-static bool do_cont(int argc, char *argv[])
+static bool do_cont(__attribute__((unused)) int argc,
+                    __attribute__((unused)) char *argv[])
 {
     return !target_conti(&gDbg->target);
 }
@@ -63,12 +65,12 @@ int dbg_init(dbg_t *dbg, char *cmd)
     return 0;
 }
 
-static bool dbg_match_cmd(int argc, char *argv[])
+static bool dbg_match_cmd(dbg_t *dbg, int argc, char *argv[])
 {
     bool ret = false;
     struct cmd_entry *item, *tmp;
 
-    list_for_each_entry_safe(item, tmp, &gDbg->list, node)
+    list_for_each_entry_safe(item, tmp, &dbg->list, node)
     {
         if (!strcmp(item->name, argv[0])) {
             ret = item->op(argc, argv);
@@ -76,7 +78,6 @@ static bool dbg_match_cmd(int argc, char *argv[])
         }
     }
 
-    fprintf(stderr, "Command %s not found\n", argv[0]);
     return false;
 
 cmd_found:
@@ -86,12 +87,12 @@ cmd_found:
 void dbg_run(dbg_t *dbg)
 {
     bool ret;
-    int argc;
-    char **argv;
-
     char *line;
+
     while ((line = linenoise("(raid)")) != NULL) {
-        ret = dbg_match_cmd(1, &line);
+        ret = dbg_match_cmd(dbg, 1, &line);
+        if (!ret)
+            fprintf(stderr, "Command '%s' not found or failed\n", line);
         linenoiseFree(line);
     }
 }
