@@ -40,7 +40,6 @@ static bool do_help(__attribute__((unused)) int argc,
     list_for_each_entry_safe(item, tmp, &gDbg->list, node)
     {
         printf("%s | %s\n", item->name, item->description);
-        ;
     }
     return true;
 }
@@ -49,6 +48,28 @@ static bool do_cont(__attribute__((unused)) int argc,
                     __attribute__((unused)) char *argv[])
 {
     return !target_conti(&gDbg->target);
+}
+
+static bool cmd_maybe(const char *target, const char *src)
+{
+    for (size_t i = 0; i < strlen(src); i++) {
+        if (target[i] == '\0')
+            return false;
+        if (src[i] != target[i])
+            return false;
+    }
+    return true;
+}
+
+static void completion(const char *buf, linenoiseCompletions *lc)
+{
+    struct cmd_entry *item, *tmp;
+
+    list_for_each_entry_safe(item, tmp, &gDbg->list, node)
+    {
+        if (cmd_maybe(item->name, buf))
+            linenoiseAddCompletion(lc, item->name);
+    }
 }
 
 int dbg_init(dbg_t *dbg, char *cmd)
@@ -62,6 +83,8 @@ int dbg_init(dbg_t *dbg, char *cmd)
 
     dbg_add_cmd(dbg, "help", do_help, " print me!");
     dbg_add_cmd(dbg, "cont", do_cont, " restart the stopped tracee process.");
+
+    linenoiseSetCompletionCallback(completion);
     return 0;
 }
 
