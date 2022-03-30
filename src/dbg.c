@@ -39,7 +39,7 @@ static bool do_help(__attribute__((unused)) int argc,
 
     list_for_each_entry_safe(item, tmp, &gDbg->list, node)
     {
-        printf("%s | %s\n", item->name, item->description);
+        printf("%10s | %s\n", item->name, item->description);
     }
     return true;
 }
@@ -48,6 +48,16 @@ static bool do_cont(__attribute__((unused)) int argc,
                     __attribute__((unused)) char *argv[])
 {
     return !target_conti(&gDbg->target);
+}
+
+static bool do_break(int argc, char *argv[])
+{
+    if (argc == 2)
+        printf("%s %s\n", argv[0], argv[1]);
+    else
+        printf("%d\n", argc);
+
+    return true;
 }
 
 static bool cmd_maybe(const char *target, const char *src)
@@ -81,11 +91,39 @@ int dbg_init(dbg_t *dbg, char *cmd)
     gDbg = dbg;
     INIT_LIST_HEAD(&dbg->list);
 
-    dbg_add_cmd(dbg, "help", do_help, " print me!");
-    dbg_add_cmd(dbg, "cont", do_cont, " restart the stopped tracee process.");
+    dbg_add_cmd(dbg, "help", do_help, "print me!");
+    dbg_add_cmd(dbg, "cont", do_cont, "restart the stopped tracee process.");
+    dbg_add_cmd(dbg, "break", do_break, "set breakpoint on tracee process.");
 
     linenoiseSetCompletionCallback(completion);
     return 0;
+}
+
+static char **dbg_parse_cmd(char *line, int *argc)
+{
+    /* FIXME: A stupid command line parser: take the first token as
+     * command and use everything left as one arguments. Also note that the
+     * returned pointer array only valid when the input parameter line is
+     * valid. */
+
+    int _argc = 1;
+    char *src = line;
+    while (*src++ != '\0') {
+        if (*src == ' ') {
+            *src = '\0';
+            src++;
+            _argc++;
+        }
+    }
+
+    char **argv = calloc(sizeof(char *), _argc);
+    for (int i = 0; i < _argc; i++) {
+        argv[i] = line;
+        line += strlen(argv[i]) + 1;
+    }
+
+    *argc = _argc;
+    return argv;
 }
 
 static bool dbg_match_cmd(dbg_t *dbg, int argc, char *argv[])
@@ -111,9 +149,13 @@ void dbg_run(dbg_t *dbg)
 {
     bool ret;
     char *line;
+    int argc;
+    char **argv;
 
     while ((line = linenoise("(raid)")) != NULL) {
-        ret = dbg_match_cmd(dbg, 1, &line);
+        argv = dbg_parse_cmd(line, &argc);
+
+        ret = dbg_match_cmd(dbg, argc, argv);
         if (!ret)
             fprintf(stderr, "Command '%s' not found or failed\n", line);
         linenoiseFree(line);
