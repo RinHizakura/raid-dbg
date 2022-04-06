@@ -1,6 +1,7 @@
 #ifndef TARGET_H
 #define TARGET_H
 
+#include <stdbool.h>
 #include <stdint.h>
 #include <sys/types.h>
 #include "bp.h"
@@ -13,8 +14,8 @@ typedef struct {
     bp_t bp[MAX_BP];
 } target_t;
 
-int target_lauch(target_t *t, char *cmd);
-int target_conti(target_t *t);
-int target_set_breakpoint(target_t *t, size_t addr);
-
+bool target_lauch(target_t *t, char *cmd);
+bool target_conti(target_t *t);
+bool target_set_breakpoint(target_t *t, size_t addr);
+bool target_get_reg(target_t *t, char *name, size_t *value);
 #endif

@@ -47,7 +47,7 @@ static bool do_help(__attribute__((unused)) int argc,
 static bool do_cont(__attribute__((unused)) int argc,
                     __attribute__((unused)) char *argv[])
 {
-    return !target_conti(&gDbg->target);
+    return target_conti(&gDbg->target);
 }
 
 static bool do_break(int argc, char *argv[])
@@ -57,7 +57,19 @@ static bool do_break(int argc, char *argv[])
 
     size_t addr;
     sscanf(argv[1], "%lx", &addr);
-    return !target_set_breakpoint(&gDbg->target, addr);
+    return target_set_breakpoint(&gDbg->target, addr);
+}
+
+static bool do_regs(int argc, char *argv[])
+{
+    if (argc != 2)
+        return false;
+
+    size_t value;
+    bool ret = target_get_reg(&gDbg->target, argv[1], &value);
+    printf("reg %s = %lx\n", argv[1], value);
+
+    return ret;
 }
 
 static bool cmd_maybe(const char *target, const char *src)
@@ -85,8 +97,8 @@ static void completion(const char *buf, linenoiseCompletions *lc)
 int dbg_init(dbg_t *dbg, char *cmd)
 {
     int ret = target_lauch(&dbg->target, cmd);
-    if (ret)
-        return ret;
+    if (!ret)
+        return -1;
 
     gDbg = dbg;
     INIT_LIST_HEAD(&dbg->list);
@@ -94,6 +106,7 @@ int dbg_init(dbg_t *dbg, char *cmd)
     dbg_add_cmd(dbg, "help", do_help, "print me!");
     dbg_add_cmd(dbg, "cont", do_cont, "restart the stopped tracee process.");
     dbg_add_cmd(dbg, "break", do_break, "set breakpoint on tracee process.");
+    dbg_add_cmd(dbg, "regs", do_regs, "dump registers.");
 
     linenoiseSetCompletionCallback(completion);
     return 0;
@@ -153,8 +166,8 @@ void dbg_run(dbg_t *dbg)
     char **argv;
 
     while ((line = linenoise("(raid)")) != NULL) {
+        linenoiseHistoryAdd(line);
         argv = dbg_parse_cmd(line, &argc);
-
         ret = dbg_match_cmd(dbg, argc, argv);
         if (!ret)
             fprintf(stderr, "Command '%s' not found or failed\n", line);

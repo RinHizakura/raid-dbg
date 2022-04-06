@@ -1,4 +1,4 @@
-CFLAGS = -Wextra -Wall -MMD -Iinclude -Ilinenoise
+CFLAGS = -Wextra -Wall -g -MMD -Iinclude -Ilinenoise
 LDFLAGS =
 
 CURDIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
