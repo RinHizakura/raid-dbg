@@ -5,10 +5,9 @@
 int main()
 {
     dbg_t dbg;
-    int ret = dbg_init(&dbg, CMD);
-    if (ret) {
+    if (!dbg_init(&dbg, CMD)) {
         perror("dbg_init");
-        return ret;
+        return -1;
     }
 
     dbg_run(&dbg);

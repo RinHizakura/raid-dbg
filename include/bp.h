@@ -1,6 +1,7 @@
 #ifndef BP_H
 #define BP_H
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <unistd.h>
 
@@ -9,6 +10,6 @@ typedef struct {
     size_t addr;
 } bp_t;
 
-int bp_set(bp_t *bp, pid_t pid, size_t addr);
+bool bp_set(bp_t *bp, pid_t pid, size_t addr);
 
 #endif

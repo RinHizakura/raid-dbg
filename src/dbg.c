@@ -1,5 +1,4 @@
 #include "dbg.h"
-#include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,11 +16,11 @@ struct cmd_entry {
     cmd_func op;
 };
 
-static int dbg_add_cmd(dbg_t *dbg, char *name, cmd_func op, char *description)
+static bool dbg_add_cmd(dbg_t *dbg, char *name, cmd_func op, char *description)
 {
     struct cmd_entry *entry = malloc(sizeof(struct cmd_entry));
     if (!entry)
-        return -1;
+        return false;
     INIT_LIST_HEAD(&entry->node);
 
     entry->name = name;
@@ -29,7 +28,7 @@ static int dbg_add_cmd(dbg_t *dbg, char *name, cmd_func op, char *description)
     entry->op = op;
 
     list_add_tail(&entry->node, &dbg->list);
-    return 0;
+    return true;
 }
 
 static bool do_help(__attribute__((unused)) int argc,
@@ -94,11 +93,11 @@ static void completion(const char *buf, linenoiseCompletions *lc)
     }
 }
 
-int dbg_init(dbg_t *dbg, char *cmd)
+bool dbg_init(dbg_t *dbg, char *cmd)
 {
     int ret = target_lauch(&dbg->target, cmd);
     if (!ret)
-        return -1;
+        return false;
 
     gDbg = dbg;
     INIT_LIST_HEAD(&dbg->list);
@@ -109,7 +108,7 @@ int dbg_init(dbg_t *dbg, char *cmd)
     dbg_add_cmd(dbg, "regs", do_regs, "dump registers.");
 
     linenoiseSetCompletionCallback(completion);
-    return 0;
+    return true;
 }
 
 static char **dbg_parse_cmd(char *line, int *argc)

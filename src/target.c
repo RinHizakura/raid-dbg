@@ -48,7 +48,7 @@ bool target_conti(target_t *t)
 
 bool target_set_breakpoint(target_t *t, size_t addr)
 {
-    return bp_set(&t->bp[0], t->pid, addr) ? false : true;
+    return bp_set(&t->bp[0], t->pid, addr);
 }
 
 bool target_get_reg(target_t *t, char *name, size_t *value)
