@@ -61,12 +61,24 @@ static bool do_break(int argc, char *argv[])
 
 static bool do_regs(int argc, char *argv[])
 {
-    if (argc != 2)
+    if (argc != 3)
         return false;
 
-    size_t value;
-    bool ret = target_get_reg(&gDbg->target, argv[1], &value);
-    printf("reg %s = %lx\n", argv[1], value);
+    bool ret = false;
+    char *sub_cmd = argv[1];
+    char *reg_name = argv[2];
+
+    if (strcmp(sub_cmd, "read") == 0) {
+        size_t value;
+        ret = target_get_reg(&gDbg->target, reg_name, &value);
+        if (!ret) {
+            printf("Unknown register name '%s'\n", reg_name);
+        } else {
+            printf("reg %s = %lx\n", reg_name, value);
+        }
+    } else {
+        printf("Unknown subcommand '%s' of regs\n", sub_cmd);
+    }
 
     return ret;
 }
