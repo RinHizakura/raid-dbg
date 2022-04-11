@@ -6,6 +6,9 @@
 
 bool bp_set(bp_t *bp, pid_t pid, size_t addr)
 {
+    if (bp->is_set)
+        return false;
+
     /* TODO: explicitly prevent calling this function twice on the same addr */
     size_t instr = ptrace(PTRACE_PEEKDATA, pid, (void *) addr, NULL);
     if (instr == (size_t) -1) {

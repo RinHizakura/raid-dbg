@@ -27,6 +27,8 @@ bool target_lauch(target_t *t, char *cmd)
     }
 
     t->pid = pid;
+    /* we should guarantee the initial value of breakpoint array */
+    memset(t->bp, 0, sizeof(bp_t) * MAX_BP);
     int options = PTRACE_O_EXITKILL;
     ptrace(PTRACE_SETOPTIONS, pid, NULL, options);
     printf("PID(%d)\n", t->pid);
@@ -42,12 +44,21 @@ bool target_conti(target_t *t)
         perror("waitpid");
         return false;
     }
+    /* To keep executing instead of hanging on the trap instruction,
+     * we simply do the following step:
+     * 1. restore the original instruction
+     * 2. rollback pc to the previous instruction
+     * 3. step one instruction
+     * 4. restore the trap instruction */
+    // bool ret = bp_unset(&t->bp[0], t->pid, addr);
 
     return true;
 }
 
 bool target_set_breakpoint(target_t *t, size_t addr)
 {
+    /* FIXME: We have to enable more break point and also be
+     * awared to set two breakpoint on the same address */
     return bp_set(&t->bp[0], t->pid, addr);
 }
 

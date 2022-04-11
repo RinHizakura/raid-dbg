@@ -6,6 +6,9 @@
 #include <unistd.h>
 
 typedef struct {
+    /* set to true to imply that the breakpoint is used for
+     * trap instruction. */
+    bool is_set;
     size_t orig_instr;
     size_t addr;
 } bp_t;
