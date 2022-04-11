@@ -50,9 +50,14 @@ bool target_conti(target_t *t)
      * 2. rollback pc to the previous instruction
      * 3. step one instruction
      * 4. restore the trap instruction */
-    // bool ret = bp_unset(&t->bp[0], t->pid, addr);
+    size_t addr;
+    bool ret = target_get_reg(t, REG_RIP, &addr);
+    ret = bp_unset(&t->bp[0], t->pid, addr);
 
-    return true;
+    /* TODO */
+    while (1)
+        ;
+    return ret;
 }
 
 bool target_set_breakpoint(target_t *t, size_t addr)
@@ -62,7 +67,16 @@ bool target_set_breakpoint(target_t *t, size_t addr)
     return bp_set(&t->bp[0], t->pid, addr);
 }
 
-bool target_get_reg(target_t *t, char *name, size_t *value)
+bool target_get_reg(target_t *t, size_t idx, size_t *value)
+{
+    struct user_regs_struct regs;
+    ptrace(PTRACE_GETREGS, t->pid, NULL, &regs);
+
+    *value = *(((size_t *) &regs) + idx);
+    return true;
+}
+
+bool target_get_reg_by_name(target_t *t, char *name, size_t *value)
 {
     struct user_regs_struct regs;
     ptrace(PTRACE_GETREGS, t->pid, NULL, &regs);
@@ -70,7 +84,7 @@ bool target_get_reg(target_t *t, char *name, size_t *value)
     /* TODO: choose the corresponding register by name */
     bool found = false;
     int idx = 0;
-    for (; idx < regs_cnt; idx++) {
+    for (; idx < REGS_CNT; idx++) {
         if (strcmp(name, reg_desc_array[idx].name) == 0) {
             found = true;
             break;

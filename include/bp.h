@@ -14,5 +14,6 @@ typedef struct {
 } bp_t;
 
 bool bp_set(bp_t *bp, pid_t pid, size_t addr);
+bool bp_unset(bp_t *bp, pid_t pid, size_t addr);
 
 #endif

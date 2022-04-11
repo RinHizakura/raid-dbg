@@ -111,7 +111,7 @@ static bool do_regs_read(int argc, char *argv[])
     if (argc != 3)
         return false;
 
-    bool ret = target_get_reg(&gDbg->target, reg_name, &value);
+    bool ret = target_get_reg_by_name(&gDbg->target, reg_name, &value);
     if (!ret) {
         fprintf(stderr, "Unknown register name '%s'\n", reg_name);
     } else {

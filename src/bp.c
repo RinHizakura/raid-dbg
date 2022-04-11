@@ -18,6 +18,7 @@ bool bp_set(bp_t *bp, pid_t pid, size_t addr)
 
     bp->orig_instr = instr;
     bp->addr = addr;
+    bp->is_set = true;
     memcpy(&instr, INT3, sizeof(INT3));
 
     int ret = ptrace(PTRACE_POKEDATA, pid, (void *) addr, instr);
@@ -25,5 +26,20 @@ bool bp_set(bp_t *bp, pid_t pid, size_t addr)
         perror("ptrace_poke");
         return false;
     }
+    return true;
+}
+
+bool bp_unset(bp_t *bp, pid_t pid, size_t addr)
+{
+    if (!bp->is_set)
+        return false;
+
+    int ret = ptrace(PTRACE_POKEDATA, pid, (void *) addr, bp->orig_instr);
+    if (ret == -1) {
+        perror("ptrace_poke");
+        return false;
+    }
+
+    bp->is_set = false;
     return true;
 }
