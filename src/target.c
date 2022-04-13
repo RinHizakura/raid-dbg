@@ -43,23 +43,20 @@ static bool target_handle_bp(target_t *t)
     }
 
     size_t addr;
-    bool ret = target_get_reg(t, REG_RIP, &addr);
-    if (!ret)
-        return ret;
+    if (!target_get_reg(t, REG_RIP, &addr))
+        return false;
 
     /* If the address isn't at the last breakpoint we hit, it means
      * the user may change pc during this period. We don't execute an extra step
      * of the original instruction in that case. */
     if (addr == t->hit_bp->addr) {
-        ret = target_step(t);
-        if (!ret)
-            return ret;
+        if (!target_step(t))
+            return false;
     }
 
     /* restore the trap instruction before we do cont command */
-    ret = bp_set(t->hit_bp);
-    if (!ret)
-        return ret;
+    if (!bp_set(t->hit_bp))
+        return false;
 
     t->hit_bp = NULL;
     return true;
@@ -78,10 +75,8 @@ bool target_step(target_t *t)
 
 bool target_conti(target_t *t)
 {
-    bool ret;
-    ret = target_handle_bp(t);
-    if (!ret)
-        return ret;
+    if (!target_handle_bp(t))
+        return false;
 
     int wstatus;
     ptrace(PTRACE_CONT, t->pid, NULL, NULL);
@@ -95,21 +90,18 @@ bool target_conti(target_t *t)
      * on the trap instruction latter, we first rollback pc to the previous
      * instruction and restore the original instruction temporarily. */
     size_t addr;
-    ret = target_get_reg(t, REG_RIP, &addr);
-    if (!ret)
-        return ret;
+    if (!target_get_reg(t, REG_RIP, &addr))
+        return false;
 
     /* FIXME: we should match all of the possible registered breakpoint instead
      * of only checking bp0 */
     if ((addr - 1) == t->bp[0].addr) {
         t->hit_bp = &t->bp[0];
-        ret = bp_unset(&t->bp[0]);
-        if (!ret)
-            return ret;
+        if (!bp_unset(&t->bp[0]))
+            return false;
 
-        ret = target_set_reg(t, REG_RIP, addr - 1);
-        if (!ret)
-            return ret;
+        if (!target_set_reg(t, REG_RIP, addr - 1))
+            return false;
     }
 
     return true;
