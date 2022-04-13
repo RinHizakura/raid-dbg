@@ -5,12 +5,14 @@
 #include <stdint.h>
 #include <sys/types.h>
 #include "bp.h"
+#include "hashtbl.h"
 
 #define MAX_BP 16
 typedef struct {
     pid_t pid;
     /* TODO: maintain a better data structure to store multiple
      * breakpoints and access them efficiently.  */
+    hashtbl_t tbl;
     bp_t bp[MAX_BP];
     bp_t *hit_bp;
 } target_t;

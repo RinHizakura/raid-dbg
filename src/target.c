@@ -43,7 +43,7 @@ static bool target_handle_bp(target_t *t)
     }
 
     size_t addr;
-    if (!target_get_reg(t, REG_RIP, &addr))
+    if (!target_get_reg(t, RIP, &addr))
         return false;
 
     /* If the address isn't at the last breakpoint we hit, it means
@@ -90,7 +90,7 @@ bool target_conti(target_t *t)
      * on the trap instruction latter, we first rollback pc to the previous
      * instruction and restore the original instruction temporarily. */
     size_t addr;
-    if (!target_get_reg(t, REG_RIP, &addr))
+    if (!target_get_reg(t, RIP, &addr))
         return false;
 
     /* FIXME: we should match all of the possible registered breakpoint instead
@@ -100,7 +100,7 @@ bool target_conti(target_t *t)
         if (!bp_unset(&t->bp[0]))
             return false;
 
-        if (!target_set_reg(t, REG_RIP, addr - 1))
+        if (!target_set_reg(t, RIP, addr - 1))
             return false;
     }
 
