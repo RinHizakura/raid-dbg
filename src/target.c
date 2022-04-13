@@ -27,6 +27,7 @@ bool target_lauch(target_t *t, char *cmd)
     }
 
     t->pid = pid;
+    t->hit_bp = NULL;
     /* we should guarantee the initial value of breakpoint array */
     memset(t->bp, 0, sizeof(bp_t) * MAX_BP);
     int options = PTRACE_O_EXITKILL;
@@ -37,18 +38,31 @@ bool target_lauch(target_t *t, char *cmd)
 
 static bool target_handle_bp(target_t *t)
 {
+    if (!t->hit_bp) {
+        return true;
+    }
+
     size_t addr;
     bool ret = target_get_reg(t, REG_RIP, &addr);
     if (!ret)
         return ret;
 
+    /* If the address isn't at the last breakpoint we hit, it means
+     * the user may change pc during this period. We don't execute an extra step
+     * of the original instruction in that case. */
     if (addr == t->hit_bp->addr) {
         ret = target_step(t);
         if (!ret)
             return ret;
     }
 
-    return bp_set(t->hit_bp);
+    /* restore the trap instruction before we do cont command */
+    ret = bp_set(t->hit_bp);
+    if (!ret)
+        return ret;
+
+    t->hit_bp = NULL;
+    return true;
 }
 
 bool target_step(target_t *t)
@@ -65,11 +79,9 @@ bool target_step(target_t *t)
 bool target_conti(target_t *t)
 {
     bool ret;
-    if (t->hit_bp) {
-        ret = target_handle_bp(t);
-        if (!ret)
-            return ret;
-    }
+    ret = target_handle_bp(t);
+    if (!ret)
+        return ret;
 
     int wstatus;
     ptrace(PTRACE_CONT, t->pid, NULL, NULL);
@@ -80,8 +92,8 @@ bool target_conti(target_t *t)
     }
 
     /* When a breakpoint is hit previously, to keep executing instead of hanging
-     * on the trap instruction, we rollback pc to the previous instruction and
-     * restore the original instruction temporarily. */
+     * on the trap instruction latter, we first rollback pc to the previous
+     * instruction and restore the original instruction temporarily. */
     size_t addr;
     ret = target_get_reg(t, REG_RIP, &addr);
     if (!ret)
