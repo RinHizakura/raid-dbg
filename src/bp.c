@@ -4,24 +4,31 @@
 #include <sys/ptrace.h>
 #include "arch.h"
 
-bool bp_set(bp_t *bp, pid_t pid, size_t addr)
+void bp_init(bp_t *bp, pid_t pid, size_t addr)
+{
+    bp->pid = pid;
+    bp->addr = addr;
+    bp->is_set = false;
+}
+
+bool bp_set(bp_t *bp)
 {
     if (bp->is_set)
         return false;
 
     /* TODO: explicitly prevent calling this function twice on the same addr */
-    size_t instr = ptrace(PTRACE_PEEKDATA, pid, (void *) addr, NULL);
+    size_t instr = ptrace(PTRACE_PEEKDATA, bp->pid, (void *) bp->addr, NULL);
     if (instr == (size_t) -1) {
         perror("ptrace_peek");
         return false;
     }
 
     bp->orig_instr = instr;
-    bp->addr = addr;
     bp->is_set = true;
+
     memcpy(&instr, INT3, sizeof(INT3));
 
-    int ret = ptrace(PTRACE_POKEDATA, pid, (void *) addr, instr);
+    int ret = ptrace(PTRACE_POKEDATA, bp->pid, (void *) bp->addr, instr);
     if (ret == -1) {
         perror("ptrace_poke");
         return false;
@@ -29,12 +36,13 @@ bool bp_set(bp_t *bp, pid_t pid, size_t addr)
     return true;
 }
 
-bool bp_unset(bp_t *bp, pid_t pid, size_t addr)
+bool bp_unset(bp_t *bp)
 {
     if (!bp->is_set)
         return false;
 
-    int ret = ptrace(PTRACE_POKEDATA, pid, (void *) addr, bp->orig_instr);
+    int ret =
+        ptrace(PTRACE_POKEDATA, bp->pid, (void *) bp->addr, bp->orig_instr);
     if (ret == -1) {
         perror("ptrace_poke");
         return false;

@@ -35,8 +35,42 @@ bool target_lauch(target_t *t, char *cmd)
     return true;
 }
 
+static bool target_handle_bp(target_t *t)
+{
+    size_t addr;
+    bool ret = target_get_reg(t, REG_RIP, &addr);
+    if (!ret)
+        return ret;
+
+    if (addr == t->hit_bp->addr) {
+        ret = target_step(t);
+        if (!ret)
+            return ret;
+    }
+
+    return bp_set(t->hit_bp);
+}
+
+bool target_step(target_t *t)
+{
+    int wstatus;
+    ptrace(PTRACE_SINGLESTEP, t->pid, NULL, NULL);
+    if (waitpid(t->pid, &wstatus, __WALL) < 0) {
+        perror("waitpid");
+        return false;
+    }
+    return true;
+}
+
 bool target_conti(target_t *t)
 {
+    bool ret;
+    if (t->hit_bp) {
+        ret = target_handle_bp(t);
+        if (!ret)
+            return ret;
+    }
+
     int wstatus;
     ptrace(PTRACE_CONT, t->pid, NULL, NULL);
 
@@ -44,27 +78,48 @@ bool target_conti(target_t *t)
         perror("waitpid");
         return false;
     }
-    /* To keep executing instead of hanging on the trap instruction,
-     * we simply do the following step:
-     * 1. restore the original instruction
-     * 2. rollback pc to the previous instruction
-     * 3. step one instruction
-     * 4. restore the trap instruction */
-    size_t addr;
-    bool ret = target_get_reg(t, REG_RIP, &addr);
-    ret = bp_unset(&t->bp[0], t->pid, addr);
 
-    /* TODO */
-    while (1)
-        ;
-    return ret;
+    /* When a breakpoint is hit previously, to keep executing instead of hanging
+     * on the trap instruction, we rollback pc to the previous instruction and
+     * restore the original instruction temporarily. */
+    size_t addr;
+    ret = target_get_reg(t, REG_RIP, &addr);
+    if (!ret)
+        return ret;
+
+    /* FIXME: we should match all of the possible registered breakpoint instead
+     * of only checking bp0 */
+    if ((addr - 1) == t->bp[0].addr) {
+        t->hit_bp = &t->bp[0];
+        ret = bp_unset(&t->bp[0]);
+        if (!ret)
+            return ret;
+
+        ret = target_set_reg(t, REG_RIP, addr - 1);
+        if (!ret)
+            return ret;
+    }
+
+    return true;
 }
 
 bool target_set_breakpoint(target_t *t, size_t addr)
 {
     /* FIXME: We have to enable more break point and also be
      * awared to set two breakpoint on the same address */
-    return bp_set(&t->bp[0], t->pid, addr);
+    bp_init(&t->bp[0], t->pid, addr);
+    return bp_set(&t->bp[0]);
+}
+
+bool target_set_reg(target_t *t, size_t idx, size_t value)
+{
+    struct user_regs_struct regs;
+    ptrace(PTRACE_GETREGS, t->pid, NULL, &regs);
+
+    *(((size_t *) &regs) + idx) = value;
+
+    ptrace(PTRACE_SETREGS, t->pid, NULL, &regs);
+    return true;
 }
 
 bool target_get_reg(target_t *t, size_t idx, size_t *value)
