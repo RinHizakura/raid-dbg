@@ -12,6 +12,9 @@ typedef struct {
     bool is_set;
     size_t orig_instr;
     size_t addr;
+    /* The string representation of addr, which is used as
+     * key of hash table. */
+    char addr_key[17];
 } bp_t;
 
 void bp_init(bp_t *bp, pid_t pid, size_t addr);

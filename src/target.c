@@ -30,6 +30,8 @@ bool target_lauch(target_t *t, char *cmd)
     t->hit_bp = NULL;
     /* we should guarantee the initial value of breakpoint array */
     memset(t->bp, 0, sizeof(bp_t) * MAX_BP);
+    hashtbl_create(&t->tbl, MAX_BP);
+
     int options = PTRACE_O_EXITKILL;
     ptrace(PTRACE_SETOPTIONS, pid, NULL, options);
     printf("PID(%d)\n", t->pid);
@@ -86,24 +88,29 @@ bool target_conti(target_t *t)
         return false;
     }
 
-    /* When a breakpoint is hit previously, to keep executing instead of hanging
-     * on the trap instruction latter, we first rollback pc to the previous
-     * instruction and restore the original instruction temporarily. */
-    size_t addr;
-    if (!target_get_reg(t, RIP, &addr))
-        return false;
-
-    /* FIXME: we should match all of the possible registered breakpoint instead
-     * of only checking bp0 */
-    if ((addr - 1) == t->bp[0].addr) {
-        t->hit_bp = &t->bp[0];
-        if (!bp_unset(&t->bp[0]))
+    if (WIFSTOPPED(wstatus) && (WSTOPSIG(wstatus) == SIGTRAP)) {
+        /* When a breakpoint is hit previously, to keep executing instead of
+         * hanging on the trap instruction latter, we first rollback pc to the
+         * previous instruction and restore the original instruction
+         * temporarily. */
+        size_t addr = 0;
+        if (!target_get_reg(t, RIP, &addr))
             return false;
+        addr -= 1;
 
-        if (!target_set_reg(t, RIP, addr - 1))
-            return false;
+        char str[17];
+        snprintf(str, 17, "%lx", addr);
+
+        bp_t *bp;
+        if (hashtbl_fetch(&t->tbl, str, (void **) &bp)) {
+            t->hit_bp = bp;
+            if (!bp_unset(bp))
+                return false;
+
+            if (!target_set_reg(t, RIP, addr))
+                return false;
+        }
     }
-
     return true;
 }
 
@@ -112,8 +119,15 @@ bool target_set_breakpoint(target_t *t, size_t addr)
     /* FIXME: We have to enable more break point and also be
      * awared to set two breakpoint on the same address */
     bp_init(&t->bp[0], t->pid, addr);
-    return bp_set(&t->bp[0]);
+    if (!bp_set(&t->bp[0]))
+        return false;
+
+    if (!hashtbl_add(&t->tbl, t->bp[0].addr_key, &t->bp[0]))
+        return false;
+
+    return true;
 }
+
 
 bool target_set_reg(target_t *t, size_t idx, size_t value)
 {

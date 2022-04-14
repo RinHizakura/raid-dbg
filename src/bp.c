@@ -9,6 +9,7 @@ void bp_init(bp_t *bp, pid_t pid, size_t addr)
     bp->pid = pid;
     bp->addr = addr;
     bp->is_set = false;
+    snprintf(bp->addr_key, 17, "%lx", bp->addr);
 }
 
 bool bp_set(bp_t *bp)

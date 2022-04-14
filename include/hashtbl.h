@@ -9,4 +9,7 @@ typedef struct {
     size_t size;
 } hashtbl_t;
 
+bool hashtbl_create(hashtbl_t *tbl, size_t size);
+bool hashtbl_add(hashtbl_t *tbl, char *key, void *data);
+bool hashtbl_fetch(hashtbl_t *tbl, char *key, void **data);
 #endif
