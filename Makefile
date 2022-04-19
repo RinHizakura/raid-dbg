@@ -32,6 +32,8 @@ $(OUT)/%.o: %.c
 $(BINARY): $(COBJ) $(LIBDW)
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
+run: $(BINARY)
+	$(BINARY)
 clean:
 	$(RM) $(COBJ) $(LIBDW)
 	$(RM) $(BINARY)

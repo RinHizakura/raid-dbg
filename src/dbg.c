@@ -1,10 +1,8 @@
 #include "dbg.h"
-#include <fcntl.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "libdw.h"
 #include "linenoise.h"
 
 static dbg_t *gDbg;
@@ -145,16 +143,14 @@ static void completion(const char *buf, linenoiseCompletions *lc)
     }
 }
 
+
 bool dbg_init(dbg_t *dbg, char *cmd)
 {
-    int ret = target_lauch(&dbg->target, cmd);
-    if (!ret)
+    if (!target_lauch(&dbg->target, cmd))
         return false;
 
-    int fd = open(cmd, O_RDONLY);
-    if (fd < 0)
+    if (!dwarf_init(&dbg->dwarf, cmd))
         return false;
-    Dwarf *dwarf = dwarf_begin(fd, DWARF_C_READ);
 
     gDbg = dbg;
     INIT_LIST_HEAD(&dbg->list);

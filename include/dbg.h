@@ -2,11 +2,13 @@
 #define DBG_H
 
 #include <stdbool.h>
+#include "dwarf_api.h"
 #include "target.h"
 #include "utils/list.h"
 
 typedef struct {
     target_t target;
+    dwarf_t dwarf;
     struct list_head list;
 } dbg_t;
 
