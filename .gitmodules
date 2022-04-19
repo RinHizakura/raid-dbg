@@ -1,3 +1,6 @@
 [submodule "linenoise"]
 	path = linenoise
 	url = https://github.com/antirez/linenoise.git
+[submodule "elfutils"]
+	path = elfutils
+	url = http://sourceware.org/git/elfutils.git
