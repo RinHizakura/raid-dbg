@@ -17,6 +17,7 @@ typedef struct {
     Dwarf_Off next_off;
     /* User should guarantee the lifetime of the reference dwarf */
     Dwarf *dwarf;
+    bool finish;
 } dwarf_iter_t;
 
 typedef struct {
