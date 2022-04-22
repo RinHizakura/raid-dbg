@@ -70,17 +70,23 @@ bool die_iter_child_next(die_iter_t *iter, Dwarf_Die *die_result)
 
 static int callback(Dwarf_Die *die, void *arg)
 {
+    Dwarf_Die die_result;
+    die_iter_t die_iter;
+    Dwarf_Attribute attr_result;
+
     if (dwarf_tag(die) != DW_TAG_subprogram) {
         return DWARF_CB_OK;
     }
 
     const char *file = dwarf_decl_file(die);
     if (file != NULL)
-        printf("file %s\n", file);
+        printf("Die of file %s\n", file);
 
-    Dwarf_Die die_result;
-    die_iter_t die_iter;
-    Dwarf_Attribute attr_result;
+    if (dwarf_attr(die, DW_AT_name, &attr_result)) {
+        const char *str = dwarf_formstring(&attr_result);
+        if (str != NULL)
+            printf("\tfunction %s\n", str);
+    }
 
     die_iter_child_start(&die_iter, die);
     while (die_iter_child_next(&die_iter, &die_result)) {
@@ -93,7 +99,7 @@ static int callback(Dwarf_Die *die, void *arg)
         const char *str = dwarf_formstring(&attr_result);
 
         if (str != NULL)
-            printf("function %s\n", str);
+            printf("\t\tparam %s\n", str);
     }
 
     return DWARF_CB_OK;
