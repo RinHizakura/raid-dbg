@@ -1,5 +1,6 @@
 #include "target.h"
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/personality.h>
 #include <sys/ptrace.h>
@@ -7,6 +8,33 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include "arch.h"
+
+static void init_debuggee_base(target_t *t)
+{
+    /* FIXME: This is a very naive implementation for the base address of
+     * debuggee, which assume it is the first line of address on proc
+     * filesystem. Refine this if we have better solution. */
+    char path[64];
+    snprintf(path, sizeof(path), "/proc/%d/maps", t->pid);
+
+    FILE *stream;
+    char *line = NULL;
+    size_t len = 0;
+    ssize_t nread;
+
+    stream = fopen(path, "r");
+    if (stream == NULL) {
+        perror("fopen");
+        return;
+    }
+
+    nread = getdelim(&line, &len, '-', stream);
+    if (nread != -1)
+        fwrite(line, nread, 1, stdout);
+    puts("");
+    free(line);
+    fclose(stream);
+}
 
 bool target_lauch(target_t *t, char *cmd)
 {
@@ -28,6 +56,7 @@ bool target_lauch(target_t *t, char *cmd)
 
     t->pid = pid;
     t->hit_bp = NULL;
+    init_debuggee_base(t);
     /* we should guarantee the initial value of breakpoint array */
     memset(t->bp, 0, sizeof(bp_t) * MAX_BP);
     hashtbl_create(&t->tbl, MAX_BP);
