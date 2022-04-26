@@ -143,6 +143,37 @@ static void completion(const char *buf, linenoiseCompletions *lc)
     }
 }
 
+static bool dbg_init_debuggee_base(dbg_t *dbg)
+{
+    /* FIXME: This is a very naive implementation for the base address of
+     * debuggee, which assume it is the first line of address on proc
+     * filesystem. Refine this if we have better solution. */
+    char path[64];
+    snprintf(path, sizeof(path), "/proc/%d/maps", dbg->target.pid);
+
+    FILE *stream;
+    char *line = NULL;
+    size_t len = 0;
+    ssize_t nread;
+
+    stream = fopen(path, "r");
+    if (stream == NULL) {
+        perror("fopen");
+        return false;
+    }
+
+    nread = getdelim(&line, &len, '-', stream);
+    if (nread == -1) {
+        perror("getdelim");
+        return false;
+    }
+
+    sscanf(line, "%lx", &dbg->base_addr);
+    free(line);
+    fclose(stream);
+
+    return true;
+}
 
 bool dbg_init(dbg_t *dbg, char *cmd)
 {
@@ -153,6 +184,9 @@ bool dbg_init(dbg_t *dbg, char *cmd)
         return false;
 
     gDbg = dbg;
+    if (!dbg_init_debuggee_base(dbg))
+        return false;
+    printf("@ %lx\n", dbg->base_addr);
     INIT_LIST_HEAD(&dbg->list);
 
     dbg_add_cmd(dbg, "help", do_help, "print me!");

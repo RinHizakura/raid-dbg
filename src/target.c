@@ -1,6 +1,5 @@
 #include "target.h"
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <sys/personality.h>
 #include <sys/ptrace.h>
@@ -8,38 +7,6 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include "arch.h"
-
-static bool target_init_debuggee_base(target_t *t)
-{
-    /* FIXME: This is a very naive implementation for the base address of
-     * debuggee, which assume it is the first line of address on proc
-     * filesystem. Refine this if we have better solution. */
-    char path[64];
-    snprintf(path, sizeof(path), "/proc/%d/maps", t->pid);
-
-    FILE *stream;
-    char *line = NULL;
-    size_t len = 0;
-    ssize_t nread;
-
-    stream = fopen(path, "r");
-    if (stream == NULL) {
-        perror("fopen");
-        return false;
-    }
-
-    nread = getdelim(&line, &len, '-', stream);
-    if (nread == -1) {
-        perror("getdelim");
-        return false;
-    }
-
-    sscanf(line, "%lx", &t->base_addr);
-    free(line);
-    fclose(stream);
-
-    return true;
-}
 
 bool target_lauch(target_t *t, char *cmd)
 {
@@ -61,8 +28,6 @@ bool target_lauch(target_t *t, char *cmd)
 
     t->pid = pid;
     t->hit_bp = NULL;
-    if (!target_init_debuggee_base(t))
-        return false;
 
     /* we should guarantee the initial value of breakpoint array */
     memset(t->bp, 0, sizeof(bp_t) * MAX_BP);
@@ -70,7 +35,7 @@ bool target_lauch(target_t *t, char *cmd)
 
     int options = PTRACE_O_EXITKILL;
     ptrace(PTRACE_SETOPTIONS, pid, NULL, options);
-    printf("PID(%d) @ %lx\n", t->pid, t->base_addr);
+    printf("PID(%d)\n", t->pid);
     return true;
 }
 

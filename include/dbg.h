@@ -9,6 +9,7 @@
 typedef struct {
     target_t target;
     dwarf_t dwarf;
+    size_t base_addr;
     struct list_head list;
 } dbg_t;
 

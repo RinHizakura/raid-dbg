@@ -10,7 +10,6 @@
 #define MAX_BP 16
 typedef struct {
     pid_t pid;
-    size_t base_addr;
 
     /* TODO: maintain a better data structure to store multiple
      * breakpoints and access them efficiently.  */
