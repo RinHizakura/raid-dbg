@@ -73,6 +73,7 @@ static int callback(Dwarf_Die *die, void *arg)
     Dwarf_Die die_result;
     die_iter_t die_iter;
     Dwarf_Attribute attr_result;
+    Dwarf_Word line;
 
     if (dwarf_tag(die) != DW_TAG_subprogram) {
         return DWARF_CB_OK;
@@ -86,6 +87,11 @@ static int callback(Dwarf_Die *die, void *arg)
         const char *str = dwarf_formstring(&attr_result);
         if (str != NULL)
             printf("\tfunction %s\n", str);
+    }
+
+    if (dwarf_attr(die, DW_AT_decl_line, &attr_result)) {
+        if (!dwarf_formudata(&attr_result, &line))
+            printf("\t@ line %lx\n", line);
     }
 
     die_iter_child_start(&die_iter, die);
@@ -105,12 +111,11 @@ static int callback(Dwarf_Die *die, void *arg)
     return DWARF_CB_OK;
 }
 
-static void test(dwarf_t *dwarf)
+static void test1(dwarf_t *dwarf)
 {
     cu_t cu;
     dwarf_iter_t iter;
     Dwarf_Die die_result;
-    Dwarf_Attribute attr_result;
 
     dwarf_iter_start(&iter, dwarf);
 
@@ -119,6 +124,31 @@ static void test(dwarf_t *dwarf)
 
         if (dwarf_tag(&die_result) == DW_TAG_compile_unit) {
             dwarf_getfuncs(&die_result, callback, NULL, 0);
+        }
+    }
+}
+
+static void test2(dwarf_t *dwarf)
+{
+    /*dwarf_addrdie*/
+    cu_t cu;
+    dwarf_iter_t iter;
+    Dwarf_Line *line;
+    Dwarf_Die cudie;
+    Dwarf_Addr addr = 0x00001161;
+
+    dwarf_iter_start(&iter, dwarf);
+    while (dwarf_iter_next(&iter, &cu)) {
+        dwarf_cu_get_die(dwarf, &cu, &cudie);
+        line = dwarf_getsrc_die(&cudie, addr);
+        if (line != NULL) {
+            int linep;
+            Dwarf_Word mtime;
+            Dwarf_Word length;
+            const char *str = dwarf_linesrc(line, &mtime, &length);
+            dwarf_lineno(line, &linep);
+
+            printf("Address 0x%lx > %s:%d\n", addr, str, linep);
         }
     }
 }
@@ -132,7 +162,8 @@ bool dwarf_init(dwarf_t *dwarf, char *file)
 
     /* FIXME: This is only used for testing the libdw api, which
      * will be removed in the future. */
-    test(dwarf);
+    test1(dwarf);
+    test2(dwarf);
 
     return true;
 }

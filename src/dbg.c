@@ -90,7 +90,10 @@ static bool do_help(__attribute__((unused)) int argc,
 static bool do_cont(__attribute__((unused)) int argc,
                     __attribute__((unused)) char *argv[])
 {
-    return target_conti(&gDbg->target);
+    if (!target_conti(&gDbg->target))
+        return false;
+
+    return true;
 }
 
 static bool do_break(int argc, char *argv[])
