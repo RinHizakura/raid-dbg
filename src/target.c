@@ -9,7 +9,7 @@
 #include <unistd.h>
 #include "arch.h"
 
-static void init_debuggee_base(target_t *t)
+static bool target_init_debuggee_base(target_t *t)
 {
     /* FIXME: This is a very naive implementation for the base address of
      * debuggee, which assume it is the first line of address on proc
@@ -25,15 +25,20 @@ static void init_debuggee_base(target_t *t)
     stream = fopen(path, "r");
     if (stream == NULL) {
         perror("fopen");
-        return;
+        return false;
     }
 
     nread = getdelim(&line, &len, '-', stream);
-    if (nread != -1)
-        fwrite(line, nread, 1, stdout);
-    puts("");
+    if (nread == -1) {
+        perror("getdelim");
+        return false;
+    }
+
+    sscanf(line, "%lx", &t->base_addr);
     free(line);
     fclose(stream);
+
+    return true;
 }
 
 bool target_lauch(target_t *t, char *cmd)
@@ -56,14 +61,16 @@ bool target_lauch(target_t *t, char *cmd)
 
     t->pid = pid;
     t->hit_bp = NULL;
-    init_debuggee_base(t);
+    if (!target_init_debuggee_base(t))
+        return false;
+
     /* we should guarantee the initial value of breakpoint array */
     memset(t->bp, 0, sizeof(bp_t) * MAX_BP);
     hashtbl_create(&t->tbl, MAX_BP);
 
     int options = PTRACE_O_EXITKILL;
     ptrace(PTRACE_SETOPTIONS, pid, NULL, options);
-    printf("PID(%d)\n", t->pid);
+    printf("PID(%d) @ %lx\n", t->pid, t->base_addr);
     return true;
 }
 
