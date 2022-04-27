@@ -4,7 +4,7 @@
 #include <string.h>
 #include "dwarf.h"
 
-bool dwarf_cu_get_die(dwarf_t *dwarf, cu_t *cu, Dwarf_Die *die_result)
+static bool dwarf_cu_get_die(dwarf_t *dwarf, cu_t *cu, Dwarf_Die *die_result)
 {
     Dwarf_Off die_offset = cu->off + cu->header_sizep;
     if (!dwarf_offdie(dwarf->inner, die_offset, die_result))
@@ -12,14 +12,14 @@ bool dwarf_cu_get_die(dwarf_t *dwarf, cu_t *cu, Dwarf_Die *die_result)
     return true;
 }
 
-void dwarf_iter_start(dwarf_iter_t *iter, dwarf_t *dwarf)
+static void dwarf_iter_start(dwarf_iter_t *iter, dwarf_t *dwarf)
 {
     iter->finish = false;
     iter->next_off = 0;
     iter->dwarf = dwarf->inner;
 }
 
-bool dwarf_iter_next(dwarf_iter_t *iter, cu_t *cu)
+static bool dwarf_iter_next(dwarf_iter_t *iter, cu_t *cu)
 {
     if (iter->finish)
         return false;
@@ -38,14 +38,14 @@ bool dwarf_iter_next(dwarf_iter_t *iter, cu_t *cu)
     return true;
 }
 
-void die_iter_child_start(die_iter_t *iter, Dwarf_Die *die)
+static void die_iter_child_start(die_iter_t *iter, Dwarf_Die *die)
 {
     iter->start = true;
     iter->finish = false;
     memcpy(&iter->die, die, sizeof(Dwarf_Die));
 }
 
-bool die_iter_child_next(die_iter_t *iter, Dwarf_Die *die_result)
+static bool die_iter_child_next(die_iter_t *iter, Dwarf_Die *die_result)
 {
     int ret;
 
@@ -68,7 +68,7 @@ bool die_iter_child_next(die_iter_t *iter, Dwarf_Die *die_result)
     return true;
 }
 
-static int callback(Dwarf_Die *die, void *arg)
+static int test_callback(Dwarf_Die *die, __attribute__((unused)) void *arg)
 {
     Dwarf_Die die_result;
     die_iter_t die_iter;
@@ -129,7 +129,7 @@ static void test1(dwarf_t *dwarf)
         dwarf_cu_get_die(dwarf, &cu, &die_result);
 
         if (dwarf_tag(&die_result) == DW_TAG_compile_unit) {
-            dwarf_getfuncs(&die_result, callback, NULL, 0);
+            dwarf_getfuncs(&die_result, test_callback, NULL, 0);
         }
     }
 }
@@ -172,4 +172,60 @@ bool dwarf_init(dwarf_t *dwarf, char *file)
     test2(dwarf);
 
     return true;
+}
+
+struct dwarf_get_symbol_addr_args {
+    char *symbol;
+    size_t *addr;
+};
+
+static int dwarf_get_symbol_addr_cb(Dwarf_Die *die, void *arg)
+{
+    Dwarf_Attribute attr_result;
+    Dwarf_Addr addr;
+    char *symbol = ((struct dwarf_get_symbol_addr_args *) arg)->symbol;
+    size_t *ret_addr = ((struct dwarf_get_symbol_addr_args *) arg)->addr;
+
+    if (dwarf_tag(die) != DW_TAG_subprogram)
+        return DWARF_CB_OK;
+
+    if (!dwarf_attr(die, DW_AT_name, &attr_result))
+        return DWARF_CB_OK;
+
+    const char *str = dwarf_formstring(&attr_result);
+    if (str == NULL || strcmp(str, symbol) != 0) {
+        return DWARF_CB_OK;
+    }
+
+    if (!dwarf_attr(die, DW_AT_low_pc, &attr_result))
+        return DWARF_CB_OK;
+
+    if (dwarf_formaddr(&attr_result, &addr))
+        return DWARF_CB_OK;
+
+    *ret_addr = addr;
+    return DWARF_CB_ABORT;
+}
+
+bool dwarf_get_symbol_addr(dwarf_t *dwarf, char *sym, size_t *addr)
+{
+    cu_t cu;
+    dwarf_iter_t iter;
+    Dwarf_Die die_result;
+    struct dwarf_get_symbol_addr_args args = {.symbol = sym, .addr = addr};
+    dwarf_iter_start(&iter, dwarf);
+
+    while (dwarf_iter_next(&iter, &cu)) {
+        dwarf_cu_get_die(dwarf, &cu, &die_result);
+
+        if (dwarf_tag(&die_result) == DW_TAG_compile_unit) {
+            ptrdiff_t ret =
+                dwarf_getfuncs(&die_result, dwarf_get_symbol_addr_cb, &args, 0);
+            if (ret != 0) {
+                return true;
+            }
+        }
+    }
+
+    return false;
 }

@@ -27,5 +27,5 @@ typedef struct {
 } die_iter_t;
 
 bool dwarf_init(dwarf_t *dwarf, char *file);
-
+bool dwarf_get_symbol_addr(dwarf_t *dwarf, char *sym, size_t *addr);
 #endif

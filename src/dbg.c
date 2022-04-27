@@ -105,10 +105,14 @@ static bool do_break(int argc, char *argv[])
     size_t addr;
     int pos, ret;
     ret = sscanf(bp_name, "0x%lx%n", &addr, &pos);
-    if ((ret == 0) || (pos != strlen(bp_name))) {
-        /* TODO: support setting breakpoint from function symbol */
-        fprintf(stderr, "Invalid breakpoint name '%s'\n", bp_name);
-        return false;
+    if ((ret == 0) || ((size_t) pos != strlen(bp_name))) {
+        if (!dwarf_get_symbol_addr(&gDbg->dwarf, bp_name, &addr)) {
+            /* TODO: support setting breakpoint from function symbol */
+            fprintf(stderr, "Invalid breakpoint name '%s'\n", bp_name);
+            return false;
+        } else {
+            addr += gDbg->base_addr;
+        }
     }
 
     if (!target_set_breakpoint(&gDbg->target, addr))
