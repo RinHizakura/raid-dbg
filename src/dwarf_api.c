@@ -134,31 +134,6 @@ static void test1(dwarf_t *dwarf)
     }
 }
 
-static void test2(dwarf_t *dwarf)
-{
-    /*dwarf_addrdie*/
-    cu_t cu;
-    dwarf_iter_t iter;
-    Dwarf_Line *line;
-    Dwarf_Die cudie;
-    Dwarf_Addr addr = 0x00001161;
-
-    dwarf_iter_start(&iter, dwarf);
-    while (dwarf_iter_next(&iter, &cu)) {
-        dwarf_cu_get_die(dwarf, &cu, &cudie);
-        line = dwarf_getsrc_die(&cudie, addr);
-        if (line != NULL) {
-            int linep;
-            Dwarf_Word mtime;
-            Dwarf_Word length;
-            const char *str = dwarf_linesrc(line, &mtime, &length);
-            dwarf_lineno(line, &linep);
-
-            printf("Address 0x%lx > %s:%d\n", addr, str, linep);
-        }
-    }
-}
-
 bool dwarf_init(dwarf_t *dwarf, char *file)
 {
     int fd = open(file, O_RDONLY);
@@ -169,7 +144,6 @@ bool dwarf_init(dwarf_t *dwarf, char *file)
     /* FIXME: This is only used for testing the libdw api, which
      * will be removed in the future. */
     test1(dwarf);
-    test2(dwarf);
 
     return true;
 }
@@ -224,6 +198,32 @@ bool dwarf_get_symbol_addr(dwarf_t *dwarf, char *sym, size_t *addr)
             if (ret != 0) {
                 return true;
             }
+        }
+    }
+
+    return false;
+}
+
+
+bool dwarf_get_addr_src(dwarf_t *dwarf,
+                        Dwarf_Addr addr,
+                        const char **name,
+                        int *linep)
+{
+    cu_t cu;
+    dwarf_iter_t iter;
+    Dwarf_Line *line;
+    Dwarf_Die cudie;
+
+    /*dwarf_addrdie*/
+    dwarf_iter_start(&iter, dwarf);
+    while (dwarf_iter_next(&iter, &cu)) {
+        dwarf_cu_get_die(dwarf, &cu, &cudie);
+        line = dwarf_getsrc_die(&cudie, addr);
+        if (line != NULL) {
+            *name = dwarf_linesrc(line, NULL, NULL);
+            dwarf_lineno(line, linep);
+            return true;
         }
     }
 

@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "arch.h"
 #include "linenoise.h"
 
 static dbg_t *gDbg;
@@ -87,11 +88,28 @@ static bool do_help(__attribute__((unused)) int argc,
     return true;
 }
 
+static bool dbg_print_source_line(dbg_t *dbg, size_t addr)
+{
+    const char *file_name;
+    int linep;
+    if (!dwarf_get_addr_src(&dbg->dwarf, addr - gDbg->base_addr, &file_name,
+                            &linep))
+        return false;
+
+    printf("Address 0x%lx > %s:%d\n", addr, file_name, linep);
+
+    return true;
+}
+
 static bool do_cont(__attribute__((unused)) int argc,
                     __attribute__((unused)) char *argv[])
 {
     if (!target_conti(&gDbg->target))
         return false;
+
+    size_t addr;
+    target_get_reg(&gDbg->target, RIP, &addr);
+    dbg_print_source_line(gDbg, addr);
 
     return true;
 }

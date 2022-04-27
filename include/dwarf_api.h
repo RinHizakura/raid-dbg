@@ -28,4 +28,8 @@ typedef struct {
 
 bool dwarf_init(dwarf_t *dwarf, char *file);
 bool dwarf_get_symbol_addr(dwarf_t *dwarf, char *sym, size_t *addr);
+bool dwarf_get_addr_src(dwarf_t *dwarf,
+                        Dwarf_Addr addr,
+                        const char **name,
+                        int *linep);
 #endif
