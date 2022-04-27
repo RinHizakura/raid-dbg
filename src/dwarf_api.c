@@ -74,6 +74,7 @@ static int callback(Dwarf_Die *die, void *arg)
     die_iter_t die_iter;
     Dwarf_Attribute attr_result;
     Dwarf_Word line;
+    Dwarf_Addr addr;
 
     if (dwarf_tag(die) != DW_TAG_subprogram) {
         return DWARF_CB_OK;
@@ -92,6 +93,11 @@ static int callback(Dwarf_Die *die, void *arg)
     if (dwarf_attr(die, DW_AT_decl_line, &attr_result)) {
         if (!dwarf_formudata(&attr_result, &line))
             printf("\t@ line %lx\n", line);
+    }
+
+    if (dwarf_attr(die, DW_AT_low_pc, &attr_result)) {
+        if (!dwarf_formaddr(&attr_result, &addr))
+            printf("\t@ pc %lx\n", addr);
     }
 
     die_iter_child_start(&die_iter, die);

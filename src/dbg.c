@@ -101,9 +101,21 @@ static bool do_break(int argc, char *argv[])
     if (argc != 2)
         return false;
 
+    char *bp_name = argv[1];
     size_t addr;
-    sscanf(argv[1], "%lx", &addr);
-    return target_set_breakpoint(&gDbg->target, addr);
+    int pos, ret;
+    ret = sscanf(bp_name, "0x%lx%n", &addr, &pos);
+    if ((ret == 0) || (pos != strlen(bp_name))) {
+        /* TODO: support setting breakpoint from function symbol */
+        fprintf(stderr, "Invalid breakpoint name '%s'\n", bp_name);
+        return false;
+    }
+
+    if (!target_set_breakpoint(&gDbg->target, addr))
+        return false;
+
+    printf("Set break pointer at %lx\n", addr);
+    return true;
 }
 
 static bool do_regs_read(int argc, char *argv[])
