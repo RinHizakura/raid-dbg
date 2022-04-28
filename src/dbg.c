@@ -96,7 +96,7 @@ static bool dbg_print_source_line(dbg_t *dbg, size_t addr)
                             &linep))
         return false;
 
-    printf("Stop at address 0x%lx(%s:%d):\n", addr, file_name, linep);
+    printf("\nHit breakpoint at file %s: line %d.\n", file_name, linep);
 
     char *line = NULL;
     size_t len = 0;
@@ -114,7 +114,7 @@ static bool dbg_print_source_line(dbg_t *dbg, size_t addr)
         }
     }
 
-    printf("%d\t%s\n", linep, line);
+    printf("%d\t%s", linep, line);
     free(line);
     fclose(stream);
 
@@ -134,29 +134,43 @@ static bool do_cont(__attribute__((unused)) int argc,
     return true;
 }
 
+static bool dbg_set_symbol_bp(dbg_t *dbg, char *bp_name)
+{
+    size_t addr;
+    if (!dwarf_get_symbol_addr(&gDbg->dwarf, bp_name, &addr))
+        return false;
+
+    if (!target_set_breakpoint(&gDbg->target, addr + dbg->base_addr))
+        return false;
+
+    return true;
+}
+
+static bool dbg_set_addr_bp(dbg_t *dbg, char *bp_name)
+{
+    int pos, ret;
+    size_t addr;
+    ret = sscanf(bp_name, "0x%lx%n", &addr, &pos);
+    if ((ret == 0) || ((size_t) pos != strlen(bp_name)))
+        return false;
+
+    if (!target_set_breakpoint(&gDbg->target, addr))
+        return false;
+
+    return true;
+}
+
 static bool do_break(int argc, char *argv[])
 {
     if (argc != 2)
         return false;
 
     char *bp_name = argv[1];
-    size_t addr;
-    int pos, ret;
-    ret = sscanf(bp_name, "0x%lx%n", &addr, &pos);
-    if ((ret == 0) || ((size_t) pos != strlen(bp_name))) {
-        if (!dwarf_get_symbol_addr(&gDbg->dwarf, bp_name, &addr)) {
-            /* TODO: support setting breakpoint from function symbol */
-            fprintf(stderr, "Invalid breakpoint name '%s'\n", bp_name);
-            return false;
-        } else {
-            addr += gDbg->base_addr;
-        }
+    if (!dbg_set_addr_bp(gDbg, bp_name) && !dbg_set_symbol_bp(gDbg, bp_name)) {
+        fprintf(stderr, "Invalid breakpoint name '%s'\n", bp_name);
+        return false;
     }
 
-    if (!target_set_breakpoint(&gDbg->target, addr))
-        return false;
-
-    printf("Set break pointer at %lx\n", addr);
     return true;
 }
 

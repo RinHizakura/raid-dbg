@@ -126,6 +126,7 @@ bool target_set_breakpoint(target_t *t, size_t addr)
     if (!hashtbl_add(&t->tbl, t->bp[0].addr_key, &t->bp[0]))
         return false;
 
+    printf("Breakpoint 1 at 0x%lx\n", addr);
     return true;
 }
 
