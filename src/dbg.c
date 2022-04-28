@@ -96,7 +96,27 @@ static bool dbg_print_source_line(dbg_t *dbg, size_t addr)
                             &linep))
         return false;
 
-    printf("Address 0x%lx > %s:%d\n", addr, file_name, linep);
+    printf("Stop at address 0x%lx(%s:%d):\n", addr, file_name, linep);
+
+    char *line = NULL;
+    size_t len = 0;
+
+    FILE *stream = fopen(file_name, "r");
+    if (stream == NULL) {
+        perror("fopen");
+        return false;
+    }
+
+    for (int i = 0; i < linep; i++) {
+        if (getline(&line, &len, stream) == -1) {
+            perror("getline");
+            return false;
+        }
+    }
+
+    printf("%d\t%s\n", linep, line);
+    free(line);
+    fclose(stream);
 
     return true;
 }
