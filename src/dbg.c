@@ -136,29 +136,23 @@ static bool do_cont(__attribute__((unused)) int argc,
     return true;
 }
 
-static bool dbg_set_symbol_bp(dbg_t *dbg, char *bp_name)
+static bool dbg_set_symbol_bp(dbg_t *dbg, char *bp_name, size_t *addr)
 {
-    size_t addr;
-    if (!dwarf_get_symbol_addr(&gDbg->dwarf, bp_name, &addr))
+    if (!dwarf_get_symbol_addr(&dbg->dwarf, bp_name, addr))
         return false;
 
-    if (!target_set_breakpoint(&dbg->target, addr + dbg->base_addr))
-        return false;
-
+    *addr += dbg->base_addr;
     return true;
 }
 
-static bool dbg_set_addr_bp(dbg_t *dbg, char *bp_name)
+static bool dbg_set_addr_bp(__attribute__((unused)) dbg_t *dbg,
+                            char *bp_name,
+                            size_t *addr)
 {
     int pos, ret;
-    size_t addr;
-    ret = sscanf(bp_name, "0x%lx%n", &addr, &pos);
+    ret = sscanf(bp_name, "0x%lx%n", addr, &pos);
     if ((ret == 0) || ((size_t) pos != strlen(bp_name)))
         return false;
-
-    if (!target_set_breakpoint(&dbg->target, addr))
-        return false;
-
     return true;
 }
 
@@ -167,11 +161,16 @@ static bool do_break(int argc, char *argv[])
     if (argc != 2)
         return false;
 
+    size_t addr;
     char *bp_name = argv[1];
-    if (!dbg_set_addr_bp(gDbg, bp_name) && !dbg_set_symbol_bp(gDbg, bp_name)) {
+    if (!dbg_set_addr_bp(gDbg, bp_name, &addr) &&
+        !dbg_set_symbol_bp(gDbg, bp_name, &addr)) {
         fprintf(stderr, "Invalid breakpoint name '%s'\n", bp_name);
         return false;
     }
+
+    if (!target_set_breakpoint(&gDbg->target, addr))
+        return false;
 
     return true;
 }

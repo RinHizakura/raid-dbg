@@ -35,7 +35,7 @@ $(BINARY): $(COBJ) $(LIBDW)
 run: $(BINARY)
 	$(BINARY)
 clean:
-	$(RM) $(COBJ) $(LIBDW)
+	$(RM) $(COBJ)
 	$(RM) $(BINARY)
 	$(RM) $(OUT)/*.d
 
