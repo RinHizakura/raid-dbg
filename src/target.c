@@ -30,6 +30,7 @@ bool target_lauch(target_t *t, char *cmd)
     t->hit_bp = NULL;
 
     /* we should guarantee the initial value of breakpoint array */
+    t->bp_bitmap = 0xffff;
     memset(t->bp, 0, sizeof(bp_t) * MAX_BP);
     hashtbl_create(&t->tbl, MAX_BP);
 
@@ -117,16 +118,25 @@ bool target_conti(target_t *t)
 
 bool target_set_breakpoint(target_t *t, size_t addr)
 {
-    /* FIXME: We have to enable more break point and also be
-     * awared to set two breakpoint on the same address */
-    bp_init(&t->bp[0], t->pid, addr);
-    if (!bp_set(&t->bp[0]))
+    /* FIXME: We have to avoid to set two breakpoint on
+     * the same address */
+    int n = __builtin_ffs(t->bp_bitmap);
+    if (n == 0) {
+        printf("Only at max 16 breakpoints could be set\n");
+        return false;
+    }
+
+    n -= 1;
+    t->bp_bitmap &= ~(1 << n);
+
+    bp_init(&t->bp[n], t->pid, addr);
+    if (!bp_set(&t->bp[n]))
         return false;
 
-    if (!hashtbl_add(&t->tbl, t->bp[0].addr_key, &t->bp[0]))
+    if (!hashtbl_add(&t->tbl, t->bp[n].addr_key, &t->bp[n]))
         return false;
 
-    printf("Breakpoint 1 at 0x%lx\n", addr);
+    printf("Breakpoint %d at 0x%lx\n", n + 1, addr);
     return true;
 }
 

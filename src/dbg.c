@@ -129,6 +129,8 @@ static bool do_cont(__attribute__((unused)) int argc,
 
     size_t addr;
     target_get_reg(&gDbg->target, RIP, &addr);
+    /* FIXME: Could we always assume that we are hitting a breakpoint if the
+     * value of RIP could be related to dwarf? */
     dbg_print_source_line(gDbg, addr);
 
     return true;
@@ -140,7 +142,7 @@ static bool dbg_set_symbol_bp(dbg_t *dbg, char *bp_name)
     if (!dwarf_get_symbol_addr(&gDbg->dwarf, bp_name, &addr))
         return false;
 
-    if (!target_set_breakpoint(&gDbg->target, addr + dbg->base_addr))
+    if (!target_set_breakpoint(&dbg->target, addr + dbg->base_addr))
         return false;
 
     return true;
@@ -154,7 +156,7 @@ static bool dbg_set_addr_bp(dbg_t *dbg, char *bp_name)
     if ((ret == 0) || ((size_t) pos != strlen(bp_name)))
         return false;
 
-    if (!target_set_breakpoint(&gDbg->target, addr))
+    if (!target_set_breakpoint(&dbg->target, addr))
         return false;
 
     return true;

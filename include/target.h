@@ -16,6 +16,7 @@ typedef struct {
     hashtbl_t tbl;
     bp_t bp[MAX_BP];
     bp_t *hit_bp;
+    uint16_t bp_bitmap;
 } target_t;
 
 bool target_lauch(target_t *t, char *cmd);
