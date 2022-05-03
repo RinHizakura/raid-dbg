@@ -70,6 +70,9 @@ static bool target_wait_sig(target_t *t)
             /* simply ignore these */
             break;
         }
+    } else if (WIFEXITED(wstatus)) {
+        printf("[Process %d exited]\n", t->pid);
+        t->run = false;
     }
 
     return ret;
@@ -92,7 +95,7 @@ bool target_lauch(target_t *t, char *cmd)
 
     t->pid = pid;
     t->hit_bp = NULL;
-
+    t->run = true;
     /* we should guarantee the initial value of breakpoint array */
     t->bp_bitmap = 0xffff;
     memset(t->bp, 0, sizeof(bp_t) * MAX_BP);
@@ -132,6 +135,11 @@ static bool target_handle_bp(target_t *t)
 
 bool target_step(target_t *t)
 {
+    if (!t->run) {
+        printf("The program is not being run.\n");
+        return false;
+    }
+
     ptrace(PTRACE_SINGLESTEP, t->pid, NULL, NULL);
     if (!target_wait_sig(t))
         return false;
@@ -140,6 +148,11 @@ bool target_step(target_t *t)
 
 bool target_conti(target_t *t)
 {
+    if (!t->run) {
+        printf("The program is not being run.\n");
+        return false;
+    }
+
     if (!target_handle_bp(t))
         return false;
 

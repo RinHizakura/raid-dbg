@@ -9,6 +9,7 @@
 
 #define MAX_BP 16
 typedef struct {
+    bool run;
     pid_t pid;
 
     /* TODO: maintain a better data structure to store multiple

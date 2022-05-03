@@ -7,6 +7,7 @@
 #include "linenoise.h"
 
 static dbg_t *gDbg;
+static bool gExec = true;
 
 typedef bool (*cmd_func)(int argc, char *argv[]);
 
@@ -85,6 +86,13 @@ static bool do_help(__attribute__((unused)) int argc,
     {
         printf("%10s | %s\n", item->name, item->description);
     }
+    return true;
+}
+
+static bool do_quit(__attribute__((unused)) int argc,
+                    __attribute__((unused)) char *argv[])
+{
+    gExec = false;
     return true;
 }
 
@@ -264,6 +272,7 @@ bool dbg_init(dbg_t *dbg, char *cmd)
     dbg_add_cmd(dbg, "help", do_help, "print me!");
     dbg_add_cmd(dbg, "cont", do_cont, "restart the stopped tracee process.");
     dbg_add_cmd(dbg, "break", do_break, "set breakpoint on tracee process.");
+    dbg_add_cmd(dbg, "quit", do_quit, "exit from raid debugger.");
 
     dbg_add_cmd(dbg, "regs", NULL, "dump registers.");
     dgb_add_option(dbg, "regs", "read", do_regs_read);
@@ -357,5 +366,8 @@ void dbg_run(dbg_t *dbg)
         argv = dbg_parse_cmd(line, &argc);
         dbg_match_cmd(dbg, argc, argv);
         linenoiseFree(line);
+
+        if (!gExec)
+            break;
     }
 }
