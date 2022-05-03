@@ -32,4 +32,5 @@ bool dwarf_get_addr_src(dwarf_t *dwarf,
                         Dwarf_Addr addr,
                         const char **name,
                         int *linep);
+void dwarf_close(dwarf_t *dwarf);
 #endif

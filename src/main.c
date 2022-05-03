@@ -11,5 +11,6 @@ int main()
     }
 
     dbg_run(&dbg);
+    dbg_close(&dbg);
     return 0;
 }

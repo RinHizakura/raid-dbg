@@ -7,7 +7,6 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include "arch.h"
-#include "utils/assert_.h"
 
 static bool target_sigtrap(target_t *t, siginfo_t info)
 {
@@ -227,4 +226,9 @@ bool target_get_reg_by_name(target_t *t, char *name, size_t *value)
 
     *value = *(((size_t *) &regs) + idx);
     return true;
+}
+
+void target_close(target_t *t)
+{
+    hashtbl_destroy(&t->tbl);
 }

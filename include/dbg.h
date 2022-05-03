@@ -15,5 +15,5 @@ typedef struct {
 
 bool dbg_init(dbg_t *dbg, char *cmd);
 void dbg_run(dbg_t *dbg);
-
+void dbg_close(dbg_t *dbg);
 #endif

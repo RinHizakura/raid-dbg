@@ -60,10 +60,6 @@ static bool dgb_add_option(dbg_t *dbg,
                            char *opt_name,
                            cmd_func op)
 {
-    struct cmd_entry *entry = malloc(sizeof(struct cmd_entry));
-    if (!entry)
-        return false;
-
     struct cmd_entry *item, *tmp;
 
     list_for_each_entry_safe(item, tmp, &dbg->list, node)
@@ -366,8 +362,32 @@ void dbg_run(dbg_t *dbg)
         argv = dbg_parse_cmd(line, &argc);
         dbg_match_cmd(dbg, argc, argv);
         linenoiseFree(line);
+        free(argv);
 
         if (!gExec)
             break;
     }
+}
+
+void dbg_close(dbg_t *dbg)
+{
+    struct cmd_entry *item, *tmp;
+    struct opt_entry *opt_item, *opt_tmp;
+
+    list_for_each_entry_safe(item, tmp, &dbg->list, node)
+    {
+        if (!item->op) {
+            list_for_each_entry_safe(opt_item, opt_tmp, &item->list, node)
+            {
+                list_del(&opt_item->node);
+                free(opt_item);
+            }
+        }
+
+        list_del(&item->node);
+        free(item);
+    }
+
+    target_close(&dbg->target);
+    dwarf_close(&dbg->dwarf);
 }

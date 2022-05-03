@@ -39,3 +39,8 @@ bool hashtbl_fetch(hashtbl_t *tbl, char *key, void **data)
     *data = ep->data;
     return true;
 }
+
+void hashtbl_destroy(hashtbl_t *tbl)
+{
+    hdestroy_r(&tbl->htab);
+}

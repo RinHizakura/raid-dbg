@@ -229,3 +229,8 @@ bool dwarf_get_addr_src(dwarf_t *dwarf,
 
     return false;
 }
+
+void dwarf_close(dwarf_t *dwarf)
+{
+    dwarf_end(dwarf->inner);
+}

@@ -12,4 +12,5 @@ typedef struct {
 bool hashtbl_create(hashtbl_t *tbl, size_t size);
 bool hashtbl_add(hashtbl_t *tbl, char *key, void *data);
 bool hashtbl_fetch(hashtbl_t *tbl, char *key, void **data);
+void hashtbl_destroy(hashtbl_t *tbl);
 #endif
