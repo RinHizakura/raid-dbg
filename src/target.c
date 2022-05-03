@@ -7,10 +7,76 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include "arch.h"
+#include "utils/assert_.h"
+
+static bool target_sigtrap(target_t *t, siginfo_t info)
+{
+    bp_t *bp;
+    size_t addr;
+    char str[17];
+
+    switch (info.si_code) {
+    case TRAP_TRACE:
+        /* This is the si_code after single step. Nothing has
+         * to be done in such case. */
+        return true;
+    case SI_KERNEL:
+        /* When a breakpoint is hit previously, to keep executing instead of
+         * hanging on the trap instruction latter, we first rollback pc to the
+         * previous instruction and restore the original instruction
+         * temporarily. */
+        if (!target_get_reg(t, RIP, &addr))
+            return false;
+
+        addr -= 1;
+        snprintf(str, 17, "%lx", addr);
+
+        if (hashtbl_fetch(&t->tbl, str, (void **) &bp)) {
+            t->hit_bp = bp;
+            if (!bp_unset(bp))
+                return false;
+
+            if (!target_set_reg(t, RIP, addr))
+                return false;
+        }
+        return true;
+    default:
+        /* FIXME: If we are not here because of single step, then we assume
+         * the only left reason for the trap is when hitting software
+         * breakpoint, but we may have to consider more different situation. */
+        return false;
+    }
+}
+
+static bool target_wait_sig(target_t *t)
+{
+    int wstatus;
+    if (waitpid(t->pid, &wstatus, __WALL) < 0) {
+        perror("waitpid");
+        return false;
+    }
+
+    bool ret = true;
+
+    if (WIFSTOPPED(wstatus) && (WSTOPSIG(wstatus) == SIGTRAP)) {
+        siginfo_t info;
+        ptrace(PTRACE_GETSIGINFO, t->pid, 0, &info);
+
+        switch (info.si_signo) {
+        case SIGTRAP:
+            ret = target_sigtrap(t, info);
+            break;
+        default:
+            /* simply ignore these */
+            break;
+        }
+    }
+
+    return ret;
+}
 
 bool target_lauch(target_t *t, char *cmd)
 {
-    int wstatus;
     pid_t pid = fork();
     /* for child process */
     if (pid == 0) {
@@ -21,10 +87,8 @@ bool target_lauch(target_t *t, char *cmd)
     }
 
     /* for parent process */
-    if (waitpid(pid, &wstatus, __WALL) < 0) {
-        perror("waitpid");
+    if (!target_wait_sig(t))
         return false;
-    }
 
     t->pid = pid;
     t->hit_bp = NULL;
@@ -68,12 +132,9 @@ static bool target_handle_bp(target_t *t)
 
 bool target_step(target_t *t)
 {
-    int wstatus;
     ptrace(PTRACE_SINGLESTEP, t->pid, NULL, NULL);
-    if (waitpid(t->pid, &wstatus, __WALL) < 0) {
-        perror("waitpid");
+    if (!target_wait_sig(t))
         return false;
-    }
     return true;
 }
 
@@ -82,44 +143,16 @@ bool target_conti(target_t *t)
     if (!target_handle_bp(t))
         return false;
 
-    int wstatus;
     ptrace(PTRACE_CONT, t->pid, NULL, NULL);
 
-    if (waitpid(t->pid, &wstatus, __WALL) < 0) {
-        perror("waitpid");
+    if (!target_wait_sig(t))
         return false;
-    }
 
-    if (WIFSTOPPED(wstatus) && (WSTOPSIG(wstatus) == SIGTRAP)) {
-        /* When a breakpoint is hit previously, to keep executing instead of
-         * hanging on the trap instruction latter, we first rollback pc to the
-         * previous instruction and restore the original instruction
-         * temporarily. */
-        size_t addr = 0;
-        if (!target_get_reg(t, RIP, &addr))
-            return false;
-        addr -= 1;
-
-        char str[17];
-        snprintf(str, 17, "%lx", addr);
-
-        bp_t *bp;
-        if (hashtbl_fetch(&t->tbl, str, (void **) &bp)) {
-            t->hit_bp = bp;
-            if (!bp_unset(bp))
-                return false;
-
-            if (!target_set_reg(t, RIP, addr))
-                return false;
-        }
-    }
     return true;
 }
 
 bool target_set_breakpoint(target_t *t, size_t addr)
 {
-    /* FIXME: We have to avoid to set two breakpoint on
-     * the same address */
     int n = __builtin_ffs(t->bp_bitmap);
     if (n == 0) {
         printf("Only at max 16 breakpoints could be set\n");
