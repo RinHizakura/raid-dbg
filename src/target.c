@@ -19,6 +19,7 @@ static bool target_sigtrap(target_t *t, siginfo_t info)
         /* This is the si_code after single step. Nothing has
          * to be done in such case. */
         return true;
+    case TRAP_BRKPT:
     case SI_KERNEL:
         /* When a breakpoint is hit previously, to keep executing instead of
          * hanging on the trap instruction latter, we first rollback pc to the
@@ -43,6 +44,7 @@ static bool target_sigtrap(target_t *t, siginfo_t info)
         /* FIXME: If we are not here because of single step, then we assume
          * the only left reason for the trap is when hitting software
          * breakpoint, but we may have to consider more different situation. */
+        printf("Unknown %d\n", info.si_code);
         return false;
     }
 }
@@ -112,6 +114,11 @@ static bool target_handle_bp(target_t *t)
         return true;
     }
 
+    // We have to take the bp first to avoid infinite loop
+    bp_t *hit_bp = t->hit_bp;
+    t->hit_bp = NULL;
+
+    printf("hh\n");
     size_t addr;
     if (!target_get_reg(t, RIP, &addr))
         return false;
@@ -119,16 +126,15 @@ static bool target_handle_bp(target_t *t)
     /* If the address isn't at the last breakpoint we hit, it means
      * the user may change pc during this period. We don't execute an extra step
      * of the original instruction in that case. */
-    if (addr == t->hit_bp->addr) {
+    if (addr == hit_bp->addr) {
         if (!target_step(t))
             return false;
     }
 
     /* restore the trap instruction before we do cont command */
-    if (!bp_set(t->hit_bp))
+    if (!bp_set(hit_bp))
         return false;
 
-    t->hit_bp = NULL;
     return true;
 }
 
@@ -139,9 +145,14 @@ bool target_step(target_t *t)
         return false;
     }
 
-    ptrace(PTRACE_SINGLESTEP, t->pid, NULL, NULL);
-    if (!target_wait_sig(t))
+    if (!target_handle_bp(t))
         return false;
+
+    ptrace(PTRACE_SINGLESTEP, t->pid, NULL, NULL);
+    if (!target_wait_sig(t)) {
+        printf("bp handle\n");
+        return false;
+    }
     return true;
 }
 

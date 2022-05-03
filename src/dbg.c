@@ -100,6 +100,8 @@ static bool dbg_print_source_line(dbg_t *dbg, size_t addr)
                             &linep))
         return false;
 
+    /* FIXME: We can't assume that we are always hitting a breakpoint if we
+     * called dbg_print_source_line. */
     printf("\nHit breakpoint at file %s: line %d.\n", file_name, linep);
 
     char *line = NULL;
@@ -133,8 +135,37 @@ static bool do_cont(__attribute__((unused)) int argc,
 
     size_t addr;
     target_get_reg(&gDbg->target, RIP, &addr);
-    /* FIXME: Could we always assume that we are hitting a breakpoint if the
-     * value of RIP could be related to dwarf? */
+    dbg_print_source_line(gDbg, addr);
+
+    return true;
+}
+
+static bool do_step(__attribute__((unused)) int argc,
+                    __attribute__((unused)) char *argv[])
+{
+    size_t addr;
+    int prev_linep = 0;
+    int linep = 0;
+
+    target_get_reg(&gDbg->target, RIP, &addr);
+    /* FIXME: The actually behavior of 'step' now is keeping going until the
+     * next line of the input executable. In other words, we won't stop at any
+     * line under shared library. To implement this, we intentionally ignore the
+     * return error of dwarf_get_addr_src and use linep = 0 to represent when
+     * the address is at unknown line (i.e. shared library in our assumption).
+     */
+    dwarf_get_addr_src(&gDbg->dwarf, addr - gDbg->base_addr, NULL, &prev_linep);
+
+    /* FIXME: This is a also a very naive implementation: we keep doing stepi
+     * until meeting the next line. We should have to try other better
+     * algorithms for this. */
+    do {
+        if (!target_step(&gDbg->target))
+            return false;
+        target_get_reg(&gDbg->target, RIP, &addr);
+        dwarf_get_addr_src(&gDbg->dwarf, addr - gDbg->base_addr, NULL, &linep);
+    } while ((linep == 0) || (prev_linep == linep));
+
     dbg_print_source_line(gDbg, addr);
 
     return true;
@@ -269,6 +300,7 @@ bool dbg_init(dbg_t *dbg, char *cmd)
     dbg_add_cmd(dbg, "cont", do_cont, "restart the stopped tracee process.");
     dbg_add_cmd(dbg, "break", do_break, "set breakpoint on tracee process.");
     dbg_add_cmd(dbg, "quit", do_quit, "exit from raid debugger.");
+    dbg_add_cmd(dbg, "step", do_step, "step to the next line.");
 
     dbg_add_cmd(dbg, "regs", NULL, "dump registers.");
     dgb_add_option(dbg, "regs", "read", do_regs_read);
