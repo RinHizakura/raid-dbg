@@ -118,7 +118,6 @@ static bool target_handle_bp(target_t *t)
     bp_t *hit_bp = t->hit_bp;
     t->hit_bp = NULL;
 
-    printf("hh\n");
     size_t addr;
     if (!target_get_reg(t, RIP, &addr))
         return false;

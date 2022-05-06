@@ -215,18 +215,15 @@ bool dwarf_get_addr_src(dwarf_t *dwarf,
     Dwarf_Line *line;
     Dwarf_Die cudie;
 
-    /*dwarf_addrdie*/
-    dwarf_iter_start(&iter, dwarf);
-    while (dwarf_iter_next(&iter, &cu)) {
-        dwarf_cu_get_die(dwarf, &cu, &cudie);
+    if (dwarf_addrdie(dwarf->inner, addr, &cudie)) {
         line = dwarf_getsrc_die(&cudie, addr);
         if (line != NULL) {
             if (name != NULL)
                 *name = dwarf_linesrc(line, NULL, NULL);
             if (linep != NULL)
                 dwarf_lineno(line, linep);
-            return true;
         }
+        return true;
     }
 
     return false;
