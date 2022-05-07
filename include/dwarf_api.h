@@ -26,11 +26,17 @@ typedef struct {
     Dwarf_Die die;
 } die_iter_t;
 
+typedef struct {
+    Dwarf_Addr low_pc;
+    Dwarf_Addr high_pc;
+} func_t;
+
 bool dwarf_init(dwarf_t *dwarf, char *file);
 bool dwarf_get_symbol_addr(dwarf_t *dwarf, char *sym, size_t *addr);
 bool dwarf_get_addr_src(dwarf_t *dwarf,
                         Dwarf_Addr addr,
                         const char **name,
                         int *linep);
+bool dwarf_get_addr_func(dwarf_t *dwarf, Dwarf_Addr addr, func_t *func);
 void dwarf_close(dwarf_t *dwarf);
 #endif

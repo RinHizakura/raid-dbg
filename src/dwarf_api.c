@@ -210,23 +210,49 @@ bool dwarf_get_addr_src(dwarf_t *dwarf,
                         const char **name,
                         int *linep)
 {
-    cu_t cu;
-    dwarf_iter_t iter;
     Dwarf_Line *line;
-    Dwarf_Die cudie;
+    Dwarf_Die die;
+    Dwarf_Attribute attr_result;
 
-    if (dwarf_addrdie(dwarf->inner, addr, &cudie)) {
-        line = dwarf_getsrc_die(&cudie, addr);
-        if (line != NULL) {
-            if (name != NULL)
-                *name = dwarf_linesrc(line, NULL, NULL);
-            if (linep != NULL)
-                dwarf_lineno(line, linep);
+    if (!dwarf_addrdie(dwarf->inner, addr, &die))
+        return false;
+
+    line = dwarf_getsrc_die(&die, addr);
+    if (line != NULL) {
+        if (name != NULL)
+            *name = dwarf_linesrc(line, NULL, NULL);
+        if (linep != NULL)
+            dwarf_lineno(line, linep);
+
+        if (dwarf_attr(&die, DW_AT_name, &attr_result)) {
+            const char *str = dwarf_formstring(&attr_result);
+            if (str != NULL)
+                printf("\tfunction %s\n", str);
         }
-        return true;
     }
 
-    return false;
+    return true;
+}
+
+bool dwarf_get_addr_func(dwarf_t *dwarf, Dwarf_Addr addr, func_t *func)
+{
+    Dwarf_Die die;
+    Dwarf_Attribute attr_result;
+
+    if (!dwarf_addrdie(dwarf->inner, addr, &die))
+        return false;
+
+    Dwarf_Die *scopes;
+    int scopes_cnt = dwarf_getscopes(&die, addr, &scopes);
+    for (int i = 0; i < scopes_cnt; i++) {
+        if (dwarf_attr(&scopes[i], DW_AT_name, &attr_result)) {
+            const char *str = dwarf_formstring(&attr_result);
+            if (str != NULL)
+                printf("\tscope %d: %s\n", i, str);
+        }
+    }
+
+    return true;
 }
 
 void dwarf_close(dwarf_t *dwarf)

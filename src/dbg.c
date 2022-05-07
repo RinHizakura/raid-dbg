@@ -171,6 +171,19 @@ static bool do_step(__attribute__((unused)) int argc,
     return true;
 }
 
+static bool do_next(__attribute__((unused)) int argc,
+                    __attribute__((unused)) char *argv[])
+{
+    /* TODO */
+    func_t func;
+    size_t addr;
+
+    target_get_reg(&gDbg->target, RIP, &addr);
+    dwarf_get_addr_func(&gDbg->dwarf, addr - gDbg->base_addr, &func);
+
+    return true;
+}
+
 static bool dbg_set_symbol_bp(dbg_t *dbg, char *bp_name, size_t *addr)
 {
     if (!dwarf_get_symbol_addr(&dbg->dwarf, bp_name, addr))
@@ -300,7 +313,8 @@ bool dbg_init(dbg_t *dbg, char *cmd)
     dbg_add_cmd(dbg, "cont", do_cont, "restart the stopped tracee process.");
     dbg_add_cmd(dbg, "break", do_break, "set breakpoint on tracee process.");
     dbg_add_cmd(dbg, "quit", do_quit, "exit from raid debugger.");
-    dbg_add_cmd(dbg, "step", do_step, "step to the next line.");
+    dbg_add_cmd(dbg, "step", do_step, "step in to the next line.");
+    dbg_add_cmd(dbg, "next", do_next, "step over to the next line.");
 
     dbg_add_cmd(dbg, "regs", NULL, "dump registers.");
     dgb_add_option(dbg, "regs", "read", do_regs_read);
