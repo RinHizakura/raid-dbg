@@ -252,6 +252,18 @@ bool dwarf_get_addr_func(dwarf_t *dwarf, Dwarf_Addr addr, func_t *func)
         }
     }
 
+    Dwarf_Die *func_die = &scopes[0];
+    Dwarf_Sword offset;
+
+    if (!dwarf_attr(func_die, DW_AT_low_pc, &attr_result) ||
+        dwarf_formaddr(&attr_result, &func->low_pc))
+        return false;
+
+    if (!dwarf_attr(func_die, DW_AT_high_pc, &attr_result) ||
+        dwarf_formsdata(&attr_result, &offset))
+        return false;
+    func->high_pc = func->low_pc + offset - 1;
+
     return true;
 }
 

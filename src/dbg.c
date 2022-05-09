@@ -179,8 +179,11 @@ static bool do_next(__attribute__((unused)) int argc,
     size_t addr;
 
     target_get_reg(&gDbg->target, RIP, &addr);
-    dwarf_get_addr_func(&gDbg->dwarf, addr - gDbg->base_addr, &func);
+    if (!dwarf_get_addr_func(&gDbg->dwarf, addr - gDbg->base_addr, &func))
+        return false;
 
+    printf("\t@ low pc %lx\n", func.low_pc);
+    printf("\t@ high pc %lx\n", func.high_pc);
     return true;
 }
 
