@@ -182,8 +182,14 @@ static bool do_next(__attribute__((unused)) int argc,
     if (!dwarf_get_addr_func(&gDbg->dwarf, addr - gDbg->base_addr, &func))
         return false;
 
+    size_t len = func.high_pc - func.low_pc;
+    uint8_t *buf = malloc(len);
+    memset(buf, INT3[0], len);
+
     printf("\t@ low pc %lx\n", func.low_pc);
     printf("\t@ high pc %lx\n", func.high_pc);
+    target_write_mem(&gDbg->target, buf, len, func.low_pc + gDbg->base_addr);
+
     return true;
 }
 

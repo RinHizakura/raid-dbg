@@ -3,6 +3,7 @@
 #include <string.h>
 #include <sys/personality.h>
 #include <sys/ptrace.h>
+#include <sys/uio.h>
 #include <sys/user.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -235,6 +236,41 @@ bool target_get_reg_by_name(target_t *t, char *name, size_t *value)
         return false;
 
     *value = *(((size_t *) &regs) + idx);
+    return true;
+}
+
+bool target_write_mem(target_t *t, uint8_t *buf, size_t len, size_t target_addr)
+{
+    /* TODO: let's see why can't we use process_vm_writev?
+    struct iovec local[1];
+    struct iovec remote[1];
+
+    local[0].iov_base = buf;
+    local[0].iov_len = len;
+    remote[0].iov_base = (void *) target_addr;
+    remote[0].iov_len = len;
+
+    printf("%lx\n", target_addr);
+    if(process_vm_writev(t->pid,
+                      local,
+                      1,
+                      remote,
+                      1,
+                      0) == -1)
+    {
+        perror("process_vm_writev");
+    }
+    */
+
+    for (size_t i = 0; i < len; i++) {
+        int ret =
+            ptrace(PTRACE_POKEDATA, t->pid, (void *) target_addr + i, buf + i);
+        if (ret == -1) {
+            perror("ptrace_poke");
+            return false;
+        }
+    }
+
     return true;
 }
 
