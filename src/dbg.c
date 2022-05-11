@@ -184,11 +184,29 @@ static bool do_next(__attribute__((unused)) int argc,
 
     size_t len = func.high_pc - func.low_pc;
     uint8_t *buf = malloc(len);
-    memset(buf, INT3[0], len);
 
     printf("\t@ low pc %lx\n", func.low_pc);
     printf("\t@ high pc %lx\n", func.high_pc);
-    target_write_mem(&gDbg->target, buf, len, func.low_pc + gDbg->base_addr);
+
+    /* Backup the whole function block instead of setting before we inject INT3
+     */
+    target_read_mem(&gDbg->target, buf, len, func.low_pc + gDbg->base_addr);
+
+    /* TODO: Then, we inject INT3 in every line of instruction instead of the
+     * current line */
+    int linep, start_linep, end_linep;
+    if (!dwarf_get_addr_src(&gDbg->dwarf, addr - gDbg->base_addr, NULL, &linep))
+        return false;
+    if (!dwarf_get_addr_src(&gDbg->dwarf, func.low_pc, NULL, &start_linep))
+        return false;
+    if (!dwarf_get_addr_src(&gDbg->dwarf, func.high_pc, NULL, &end_linep))
+        return false;
+
+    printf(" %d - %d - %d\n", linep, start_linep, end_linep);
+
+    // target_write_mem(&gDbg->target, buf, len, func.low_pc + gDbg->base_addr);
+
+    free(buf);
 
     return true;
 }

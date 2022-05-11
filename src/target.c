@@ -239,9 +239,10 @@ bool target_get_reg_by_name(target_t *t, char *name, size_t *value)
     return true;
 }
 
-bool target_write_mem(target_t *t, uint8_t *buf, size_t len, size_t target_addr)
+bool target_read_mem(target_t *t, uint8_t *buf, size_t len, size_t target_addr)
 {
-    /* TODO: let's see why can't we use process_vm_writev?
+    /* NOTE: maybe we should check the permission first instead of assume
+     * all the region could be read. */
     struct iovec local[1];
     struct iovec remote[1];
 
@@ -250,17 +251,19 @@ bool target_write_mem(target_t *t, uint8_t *buf, size_t len, size_t target_addr)
     remote[0].iov_base = (void *) target_addr;
     remote[0].iov_len = len;
 
-    printf("%lx\n", target_addr);
-    if(process_vm_writev(t->pid,
-                      local,
-                      1,
-                      remote,
-                      1,
-                      0) == -1)
-    {
-        perror("process_vm_writev");
+    if (process_vm_readv(t->pid, local, 1, remote, 1, 0) == -1) {
+        perror("process_vm_readv");
+        return false;
     }
-    */
+
+    return true;
+}
+
+bool target_write_mem(target_t *t, uint8_t *buf, size_t len, size_t target_addr)
+{
+    /* TODO: let's see if we can modify the tracee's permission to
+     * use process_vm_writev on code region. Or we can check the permission
+     * first then deciding the approach. */
 
     for (size_t i = 0; i < len; i++) {
         int ret =
