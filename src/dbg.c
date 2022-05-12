@@ -5,6 +5,7 @@
 #include <string.h>
 #include "arch.h"
 #include "linenoise.h"
+#include "utils/align.h"
 
 static dbg_t *gDbg;
 static bool gExec = true;
@@ -94,6 +95,10 @@ static bool do_quit(__attribute__((unused)) int argc,
 
 static bool dbg_print_source_line(dbg_t *dbg, size_t addr)
 {
+    /* check target status first to avoid to query the invalid address */
+    if (!target_runnable(&dbg->target))
+        return false;
+
     const char *file_name;
     int linep;
     if (!dwarf_get_addr_src(&dbg->dwarf, addr - gDbg->base_addr, &file_name,
@@ -102,7 +107,8 @@ static bool dbg_print_source_line(dbg_t *dbg, size_t addr)
 
     /* FIXME: We can't assume that we are always hitting a breakpoint if we
      * called dbg_print_source_line. */
-    printf("\nHit breakpoint at file %s: line %d.\n", file_name, linep);
+    printf("\nHit breakpoint at addr %lx file %s: line %d.\n", addr, file_name,
+           linep);
 
     char *line = NULL;
     size_t len = 0;
@@ -174,7 +180,6 @@ static bool do_step(__attribute__((unused)) int argc,
 static bool do_next(__attribute__((unused)) int argc,
                     __attribute__((unused)) char *argv[])
 {
-    /* TODO */
     func_t func;
     size_t addr;
 
@@ -182,31 +187,47 @@ static bool do_next(__attribute__((unused)) int argc,
     if (!dwarf_get_addr_func(&gDbg->dwarf, addr - gDbg->base_addr, &func))
         return false;
 
-    size_t len = func.high_pc - func.low_pc;
-    uint8_t *buf = malloc(len);
+    /* We could have to read more data because of the limitation of
+     * target_write_mem now. */
+    size_t len = ALIGN_UP(func.high_pc - func.low_pc, sizeof(size_t));
+    size_t *buf = malloc(len);
 
-    printf("\t@ low pc %lx\n", func.low_pc);
-    printf("\t@ high pc %lx\n", func.high_pc);
-
-    /* Backup the whole function block instead of setting before we inject INT3
-     */
+    /* Backup the whole function block first. Then, we'll inject INT3 in every
+     * line except the current one */
     target_read_mem(&gDbg->target, buf, len, func.low_pc + gDbg->base_addr);
 
-    /* TODO: Then, we inject INT3 in every line of instruction instead of the
-     * current line */
+    /* The function should be placed in the same file, so we just get it at the
+     * first time we call dwarf_get_addr_src */
+    const char *file_name;
     int linep, start_linep, end_linep;
-    if (!dwarf_get_addr_src(&gDbg->dwarf, addr - gDbg->base_addr, NULL, &linep))
+    if (!dwarf_get_addr_src(&gDbg->dwarf, addr - gDbg->base_addr, &file_name,
+                            &linep))
         return false;
     if (!dwarf_get_addr_src(&gDbg->dwarf, func.low_pc, NULL, &start_linep))
         return false;
     if (!dwarf_get_addr_src(&gDbg->dwarf, func.high_pc, NULL, &end_linep))
         return false;
 
-    printf(" %d - %d - %d\n", linep, start_linep, end_linep);
+    for (int l = start_linep; l < end_linep; l++) {
+        if (l == linep)
+            continue;
 
-    // target_write_mem(&gDbg->target, buf, len, func.low_pc + gDbg->base_addr);
+        size_t bp_addr;
+        if (!dwarf_get_line_addr(&gDbg->dwarf, file_name, l, &bp_addr))
+            return false;
 
+        size_t int3 = INT3[0];
+        target_write_mem(&gDbg->target, &int3, sizeof(int3),
+                         bp_addr + gDbg->base_addr);
+    }
+
+    if (!target_conti(&gDbg->target))
+        return false;
+    target_write_mem(&gDbg->target, buf, len, func.low_pc + gDbg->base_addr);
     free(buf);
+
+    target_get_reg(&gDbg->target, RIP, &addr);
+    dbg_print_source_line(gDbg, addr);
 
     return true;
 }

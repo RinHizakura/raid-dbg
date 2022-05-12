@@ -8,6 +8,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include "arch.h"
+#include "utils/align.h"
 
 static bool target_sigtrap(target_t *t, siginfo_t info)
 {
@@ -36,10 +37,9 @@ static bool target_sigtrap(target_t *t, siginfo_t info)
             t->hit_bp = bp;
             if (!bp_unset(bp))
                 return false;
-
-            if (!target_set_reg(t, RIP, addr))
-                return false;
         }
+        if (!target_set_reg(t, RIP, addr))
+            return false;
         return true;
     default:
         /* FIXME: If we are not here because of single step, then we assume
@@ -107,6 +107,11 @@ bool target_lauch(target_t *t, char *cmd)
     ptrace(PTRACE_SETOPTIONS, pid, NULL, options);
     printf("PID(%d)\n", t->pid);
     return true;
+}
+
+bool target_runnable(target_t *t)
+{
+    return t->run;
 }
 
 static bool target_handle_bp(target_t *t)
@@ -239,7 +244,7 @@ bool target_get_reg_by_name(target_t *t, char *name, size_t *value)
     return true;
 }
 
-bool target_read_mem(target_t *t, uint8_t *buf, size_t len, size_t target_addr)
+bool target_read_mem(target_t *t, size_t *buf, size_t len, size_t target_addr)
 {
     /* NOTE: maybe we should check the permission first instead of assume
      * all the region could be read. */
@@ -259,15 +264,20 @@ bool target_read_mem(target_t *t, uint8_t *buf, size_t len, size_t target_addr)
     return true;
 }
 
-bool target_write_mem(target_t *t, uint8_t *buf, size_t len, size_t target_addr)
+bool target_write_mem(target_t *t, size_t *buf, size_t len, size_t target_addr)
 {
     /* TODO: let's see if we can modify the tracee's permission to
      * use process_vm_writev on code region. Or we can check the permission
      * first then deciding the approach. */
 
-    for (size_t i = 0; i < len; i++) {
-        int ret =
-            ptrace(PTRACE_POKEDATA, t->pid, (void *) target_addr + i, buf + i);
+    /* WARNING!: The length of mem write is limited to size_t per unit
+     * currently. */
+    if (len != ALIGN_UP(len, sizeof(size_t)))
+        return false;
+
+    for (size_t i = 0; i < len / sizeof(size_t); i++) {
+        int ret = ptrace(PTRACE_POKEDATA, t->pid, (size_t *) target_addr + i,
+                         *(buf + i));
         if (ret == -1) {
             perror("ptrace_poke");
             return false;

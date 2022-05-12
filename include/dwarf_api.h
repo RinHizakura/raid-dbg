@@ -38,5 +38,9 @@ bool dwarf_get_addr_src(dwarf_t *dwarf,
                         const char **name,
                         int *linep);
 bool dwarf_get_addr_func(dwarf_t *dwarf, Dwarf_Addr addr, func_t *func);
+bool dwarf_get_line_addr(dwarf_t *dwarf,
+                         const char *fname,
+                         int line,
+                         size_t *addr);
 void dwarf_close(dwarf_t *dwarf);
 #endif

@@ -212,7 +212,6 @@ bool dwarf_get_addr_src(dwarf_t *dwarf,
 {
     Dwarf_Line *line;
     Dwarf_Die die;
-    Dwarf_Attribute attr_result;
 
     if (!dwarf_addrdie(dwarf->inner, addr, &die))
         return false;
@@ -223,12 +222,6 @@ bool dwarf_get_addr_src(dwarf_t *dwarf,
             *name = dwarf_linesrc(line, NULL, NULL);
         if (linep != NULL)
             dwarf_lineno(line, linep);
-
-        if (dwarf_attr(&die, DW_AT_name, &attr_result)) {
-            const char *str = dwarf_formstring(&attr_result);
-            if (str != NULL)
-                printf("\tfunction %s\n", str);
-        }
     }
 
     return true;
@@ -263,6 +256,25 @@ bool dwarf_get_addr_func(dwarf_t *dwarf, Dwarf_Addr addr, func_t *func)
         dwarf_formsdata(&attr_result, &offset))
         return false;
     func->high_pc = func->low_pc + offset - 1;
+
+    return true;
+}
+
+bool dwarf_get_line_addr(dwarf_t *dwarf,
+                         const char *fname,
+                         int line,
+                         size_t *addr)
+{
+    Dwarf_Line **line_info;
+    size_t nsrcs = 0;
+    dwarf_getsrc_file(dwarf->inner, fname, line, 0, &line_info, &nsrcs);
+
+    /* FIXME: In what scenario will the nsrcs > 1? */
+    if (nsrcs != 1)
+        return false;
+
+    if (dwarf_lineaddr(line_info[0], addr))
+        return false;
 
     return true;
 }
