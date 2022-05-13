@@ -187,9 +187,7 @@ static bool do_next(__attribute__((unused)) int argc,
     if (!dwarf_get_addr_func(&gDbg->dwarf, addr - gDbg->base_addr, &func))
         return false;
 
-    /* We could have to read more data because of the limitation of
-     * target_write_mem now. */
-    size_t len = ALIGN_UP(func.high_pc - func.low_pc, sizeof(size_t));
+    size_t len = func.high_pc - func.low_pc;
     size_t *buf = malloc(len);
 
     /* Backup the whole function block first. Then, we'll inject INT3 in every

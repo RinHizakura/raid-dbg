@@ -270,14 +270,35 @@ bool target_write_mem(target_t *t, size_t *buf, size_t len, size_t target_addr)
      * use process_vm_writev on code region. Or we can check the permission
      * first then deciding the approach. */
 
-    /* WARNING!: The length of mem write is limited to size_t per unit
-     * currently. */
-    if (len != ALIGN_UP(len, sizeof(size_t)))
-        return false;
+    uint8_t unit = sizeof(size_t);
 
-    for (size_t i = 0; i < len / sizeof(size_t); i++) {
-        int ret = ptrace(PTRACE_POKEDATA, t->pid, (size_t *) target_addr + i,
-                         *(buf + i));
+    for (; len > unit; len -= unit) {
+        int ret = ptrace(PTRACE_POKEDATA, t->pid, (void *) target_addr, *buf);
+        if (ret == -1) {
+            perror("ptrace_poke");
+            return false;
+        }
+
+        buf++;
+        target_addr += unit;
+    }
+
+    /* If a write size is smaller than a word, we should read memory before
+     * rewriting it. */
+    if (len > 0) {
+        size_t value =
+            ptrace(PTRACE_PEEKDATA, t->pid, (void *) target_addr, NULL);
+        if (value == (size_t) -1) {
+            perror("ptrace_peek");
+            return false;
+        }
+
+        uint8_t *v = (uint8_t *) &value;
+        for (size_t i = 0; i < len; i++) {
+            v[i] = *((uint8_t *) buf + i);
+        }
+
+        int ret = ptrace(PTRACE_POKEDATA, t->pid, (void *) target_addr, value);
         if (ret == -1) {
             perror("ptrace_poke");
             return false;
