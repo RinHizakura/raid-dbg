@@ -8,7 +8,6 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include "arch.h"
-#include "utils/align.h"
 
 static bool target_sigtrap(target_t *t, siginfo_t info)
 {

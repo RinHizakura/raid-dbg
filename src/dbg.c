@@ -5,7 +5,6 @@
 #include <string.h>
 #include "arch.h"
 #include "linenoise.h"
-#include "utils/align.h"
 
 static dbg_t *gDbg;
 static bool gExec = true;
