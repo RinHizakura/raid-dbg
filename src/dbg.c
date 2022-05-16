@@ -218,6 +218,9 @@ static bool do_next(__attribute__((unused)) int argc,
                          bp_addr + gDbg->base_addr);
     }
 
+    /* TODO: We also need to set breakpoint at return address. I'll
+     * complete this once we have stack unwinding. */
+
     if (!target_conti(&gDbg->target))
         return false;
     target_write_mem(&gDbg->target, buf, len, func.low_pc + gDbg->base_addr);
@@ -249,6 +252,21 @@ static bool dbg_set_addr_bp(__attribute__((unused)) dbg_t *dbg,
     return true;
 }
 
+static bool dbg_set_src_line_bp(dbg_t *dbg, char *bp_name, size_t *addr)
+{
+    /* FIXME: This is a very naive implementation. It could be unsafe! */
+    char *file_name = strtok(bp_name, ":");
+    if (file_name == NULL)
+        return false;
+
+    char *line = strtok(NULL, ":");
+    if (line == NULL)
+        return false;
+
+    printf("%s %s\n", file_name, line);
+    return true;
+}
+
 static bool do_break(int argc, char *argv[])
 {
     if (argc != 2)
@@ -256,16 +274,21 @@ static bool do_break(int argc, char *argv[])
 
     size_t addr;
     char *bp_name = argv[1];
-    if (!dbg_set_addr_bp(gDbg, bp_name, &addr) &&
-        !dbg_set_symbol_bp(gDbg, bp_name, &addr)) {
-        fprintf(stderr, "Invalid breakpoint name '%s'\n", bp_name);
-        return false;
+
+    if (dbg_set_addr_bp(gDbg, bp_name, &addr)) {
+        if (target_set_breakpoint(&gDbg->target, addr))
+            return true;
+    } else if (dbg_set_src_line_bp(gDbg, bp_name, &addr)) {
+        /* TODO */
+        while (1)
+            ;
+    } else if (dbg_set_symbol_bp(gDbg, bp_name, &addr)) {
+        if (target_set_breakpoint(&gDbg->target, addr))
+            return true;
     }
 
-    if (!target_set_breakpoint(&gDbg->target, addr))
-        return false;
-
-    return true;
+    fprintf(stderr, "Invalid breakpoint name '%s'\n", bp_name);
+    return false;
 }
 
 static bool do_regs_read(int argc, char *argv[])
