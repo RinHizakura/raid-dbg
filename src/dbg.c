@@ -259,11 +259,19 @@ static bool dbg_set_src_line_bp(dbg_t *dbg, char *bp_name, size_t *addr)
     if (file_name == NULL)
         return false;
 
-    char *line = strtok(NULL, ":");
-    if (line == NULL)
+    char *line_str = strtok(NULL, ":");
+    if (line_str == NULL)
         return false;
 
-    printf("%s %s\n", file_name, line);
+    int ret, pos, line;
+    ret = sscanf(line_str, "%d%n", &line, &pos);
+    if ((ret == 0) || ((size_t) pos != strlen(line_str)))
+        return false;
+
+    printf("%s %d\n", file_name, line);
+    if (!dwarf_get_line_addr(&dbg->dwarf, file_name, line, addr))
+        return false;
+
     return true;
 }
 
@@ -280,6 +288,7 @@ static bool do_break(int argc, char *argv[])
             return true;
     } else if (dbg_set_src_line_bp(gDbg, bp_name, &addr)) {
         /* TODO */
+        printf("@ addr %lx\n", addr);
         while (1)
             ;
     } else if (dbg_set_symbol_bp(gDbg, bp_name, &addr)) {
