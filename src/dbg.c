@@ -252,27 +252,34 @@ static bool dbg_set_addr_bp(__attribute__((unused)) dbg_t *dbg,
     return true;
 }
 
-static bool dbg_set_src_line_bp(dbg_t *dbg, char *bp_name, size_t *addr)
+static bool dbg_set_src_line_bp(dbg_t *dbg, char *bp_name_base, size_t *addr)
 {
     /* FIXME: This is a very naive implementation. It could be unsafe! */
+    bool ret = false;
+    char *bp_name = strdup(bp_name_base);
+
     char *file_name = strtok(bp_name, ":");
     if (file_name == NULL)
-        return false;
+        goto get_src_line_bp_end;
 
     char *line_str = strtok(NULL, ":");
     if (line_str == NULL)
         return false;
 
-    int ret, pos, line;
-    ret = sscanf(line_str, "%d%n", &line, &pos);
-    if ((ret == 0) || ((size_t) pos != strlen(line_str)))
-        return false;
+    int ret2, pos, line;
+    ret2 = sscanf(line_str, "%d%n", &line, &pos);
+    if ((ret2 == 0) || ((size_t) pos != strlen(line_str)))
+        goto get_src_line_bp_end;
 
-    printf("%s %d\n", file_name, line);
     if (!dwarf_get_line_addr(&dbg->dwarf, file_name, line, addr))
-        return false;
+        goto get_src_line_bp_end;
 
-    return true;
+    *addr += dbg->base_addr;
+    ret = true;
+
+get_src_line_bp_end:
+    free(bp_name);
+    return ret;
 }
 
 static bool do_break(int argc, char *argv[])
@@ -283,21 +290,17 @@ static bool do_break(int argc, char *argv[])
     size_t addr;
     char *bp_name = argv[1];
 
-    if (dbg_set_addr_bp(gDbg, bp_name, &addr)) {
-        if (target_set_breakpoint(&gDbg->target, addr))
-            return true;
-    } else if (dbg_set_src_line_bp(gDbg, bp_name, &addr)) {
-        /* TODO */
-        printf("@ addr %lx\n", addr);
-        while (1)
-            ;
-    } else if (dbg_set_symbol_bp(gDbg, bp_name, &addr)) {
-        if (target_set_breakpoint(&gDbg->target, addr))
-            return true;
+    if (!(dbg_set_addr_bp(gDbg, bp_name, &addr)) &&
+        !(dbg_set_src_line_bp(gDbg, bp_name, &addr)) &&
+        !(dbg_set_symbol_bp(gDbg, bp_name, &addr))) {
+        fprintf(stderr, "Invalid breakpoint name '%s'\n", bp_name);
+        return false;
     }
 
-    fprintf(stderr, "Invalid breakpoint name '%s'\n", bp_name);
-    return false;
+    if (!target_set_breakpoint(&gDbg->target, addr))
+        return false;
+
+    return true;
 }
 
 static bool do_regs_read(int argc, char *argv[])
