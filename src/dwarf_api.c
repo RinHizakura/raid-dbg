@@ -279,6 +279,16 @@ bool dwarf_get_line_addr(dwarf_t *dwarf,
     return true;
 }
 
+bool dwarf_get_frame(dwarf_t *dwarf)
+{
+    Elf *elf = dwarf_getelf(dwarf->inner);
+    Dwarf_CFI *cfi = dwarf_getcfi_elf(elf);
+    if (cfi == NULL)
+        printf("fail\n");
+
+    return true;
+}
+
 void dwarf_close(dwarf_t *dwarf)
 {
     dwarf_end(dwarf->inner);

@@ -42,5 +42,6 @@ bool dwarf_get_line_addr(dwarf_t *dwarf,
                          const char *fname,
                          int line,
                          size_t *addr);
+bool dwarf_get_frame(dwarf_t *dwarf);
 void dwarf_close(dwarf_t *dwarf);
 #endif

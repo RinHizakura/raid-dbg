@@ -303,6 +303,12 @@ static bool do_break(int argc, char *argv[])
     return true;
 }
 
+static bool do_backtrace(int argc, char *argv[])
+{
+    dwarf_get_frame(&gDbg->dwarf);
+    return true;
+}
+
 static bool do_regs_read(int argc, char *argv[])
 {
     size_t value;
@@ -395,6 +401,7 @@ bool dbg_init(dbg_t *dbg, char *cmd)
     dbg_add_cmd(dbg, "quit", do_quit, "exit from raid debugger.");
     dbg_add_cmd(dbg, "step", do_step, "step in to the next line.");
     dbg_add_cmd(dbg, "next", do_next, "step over to the next line.");
+    dbg_add_cmd(dbg, "backtrace", do_backtrace, "backtrace the call frame.");
 
     dbg_add_cmd(dbg, "regs", NULL, "dump registers.");
     dgb_add_option(dbg, "regs", "read", do_regs_read);
