@@ -32,4 +32,10 @@ const struct reg_desc reg_desc_array[REGS_CNT] = {
     [FS]       = {"fs"},
     [GS]       = {"gs"},
 };
+
+/* FIXME: Only use temporarily for the lazy guy RinHizakura.
+ * We should fill all mapping value for him. */
+const int regno_map[REGS_CNT] = {
+    [7] = RSP,
+};
 /* clang-format on */
