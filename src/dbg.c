@@ -305,7 +305,16 @@ static bool do_break(int argc, char *argv[])
 
 static bool do_backtrace(int argc, char *argv[])
 {
-    dwarf_get_frame(&gDbg->dwarf);
+    size_t addr;
+    target_get_reg(&gDbg->target, RIP, &addr);
+
+    int reg_no;
+    size_t offset;
+    /* find CFA from the locaion */
+    dwarf_get_frame_cfa(&gDbg->dwarf, addr - gDbg->base_addr, &reg_no, &offset);
+    printf("CFA: reg%d / offset %ld\n", reg_no, offset);
+    /* then we can obtain the return address(ra) from cfa */
+
     return true;
 }
 

@@ -279,13 +279,32 @@ bool dwarf_get_line_addr(dwarf_t *dwarf,
     return true;
 }
 
-bool dwarf_get_frame(dwarf_t *dwarf)
+bool dwarf_get_frame_cfa(dwarf_t *dwarf,
+                         size_t addr,
+                         int *reg_no,
+                         size_t *offset)
 {
+    /* FIXME: Only the CFI in the ELF file(.eh_frame) is supported now. */
     Elf *elf = dwarf_getelf(dwarf->inner);
     Dwarf_CFI *cfi = dwarf_getcfi_elf(elf);
     if (cfi == NULL)
-        printf("fail\n");
+        return false;
 
+    Dwarf_Frame *frame;
+    if (dwarf_cfi_addrframe(cfi, addr, &frame))
+        return false;
+
+    Dwarf_Op *ops;
+    size_t nops = 0;
+    if (dwarf_frame_cfa(frame, &ops, &nops) != 0)
+        return false;
+
+    /* FIXME: This is the only dwarf location operation we consider now. */
+    if (ops->atom != DW_OP_bregx || nops != 1)
+        return false;
+
+    *reg_no = ops->number;
+    *offset = ops->number2;
     return true;
 }
 
