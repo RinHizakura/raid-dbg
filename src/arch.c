@@ -33,9 +33,19 @@ const struct reg_desc reg_desc_array[REGS_CNT] = {
     [GS]       = {"gs"},
 };
 
-/* FIXME: Only use temporarily for the lazy guy RinHizakura.
- * We should fill all mapping value for him. */
-const int regno_map[REGS_CNT] = {
+/* Reference: [x86_64_abi](https://refspecs.linuxfoundation.org/elf/x86_64-abi-0.95.pdf)
+ * Figure 3.36: DWARF Register Number Mapping */
+const int regno_map[16] = {
+    [0] = RAX,
+    [1] = RDX,
+    [2] = RCX,
+    [3] = RBX,
+    [4] = RSI,
+    [5] = RDI,
+    [6] = RBP,
     [7] = RSP,
+#define X(n) [n] = R##n
+    X(8), X(9), X(10), X(11), X(12), X(13), X(14), X(15),
+#undef X
 };
 /* clang-format on */
