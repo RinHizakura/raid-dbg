@@ -308,21 +308,12 @@ static bool do_backtrace(int argc, char *argv[])
     size_t addr;
     target_get_reg(&gDbg->target, RIP, &addr);
 
-    int reg_no;
-    size_t offset;
-    /* find CFA from the locaion */
-    if (!dwarf_get_frame_cfa(&gDbg->dwarf, addr - gDbg->base_addr, &reg_no,
-                             &offset))
+    int reg_no, offset;
+    if (!dwarf_get_frame_reg(&gDbg->dwarf, addr - gDbg->base_addr,
+                             DWARF_RA_REGNO, &reg_no, &offset))
         return false;
 
-    printf("CFA: reg%d / offset %ld\n", reg_no, offset);
-
-    /* then we can obtain the return address(ra) from cfa */
-    size_t value, sp_value;
-    target_get_reg(&gDbg->target, regno_map[reg_no], &value);
-    target_get_reg(&gDbg->target, RSP, &sp_value);
-    printf("value %lx %lx\n", value, sp_value);
-
+    printf("RA at %d %d\n", reg_no, offset);
     return true;
 }
 

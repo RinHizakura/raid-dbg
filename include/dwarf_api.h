@@ -42,9 +42,11 @@ bool dwarf_get_line_addr(dwarf_t *dwarf,
                          const char *fname,
                          int line,
                          size_t *addr);
-bool dwarf_get_frame_cfa(dwarf_t *dwarf,
+bool dwarf_get_frame_cfa(dwarf_t *dwarf, size_t addr, int *reg_no, int *offset);
+bool dwarf_get_frame_reg(dwarf_t *dwarf,
                          size_t addr,
+                         int req_reg,
                          int *reg_no,
-                         size_t *offset);
+                         int *offset);
 void dwarf_close(dwarf_t *dwarf);
 #endif

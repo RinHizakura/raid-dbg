@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#define DWARF_RA_REGNO (16)
+
 #ifdef __x86_64__
 struct reg_desc {
     const char *name;
@@ -45,6 +47,7 @@ typedef struct {
 extern const uint8_t INT3[1];
 extern const struct reg_desc reg_desc_array[REGS_CNT];
 extern const int regno_map[16];
+
 #else
 #error "unsupported architecture"
 #endif

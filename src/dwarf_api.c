@@ -279,10 +279,7 @@ bool dwarf_get_line_addr(dwarf_t *dwarf,
     return true;
 }
 
-bool dwarf_get_frame_cfa(dwarf_t *dwarf,
-                         size_t addr,
-                         int *reg_no,
-                         size_t *offset)
+static bool dwarf_get_frame(dwarf_t *dwarf, size_t addr, Dwarf_Frame **frame)
 {
     /* FIXME: Only the CFI in the ELF file(.eh_frame) is supported now. */
     Elf *elf = dwarf_getelf(dwarf->inner);
@@ -290,10 +287,14 @@ bool dwarf_get_frame_cfa(dwarf_t *dwarf,
     if (cfi == NULL)
         return false;
 
-    Dwarf_Frame *frame;
-    if (dwarf_cfi_addrframe(cfi, addr, &frame))
+    if (dwarf_cfi_addrframe(cfi, addr, frame))
         return false;
 
+    return true;
+}
+
+static bool __dwarf_get_frame_cfa(Dwarf_Frame *frame, int *reg_no, int *offset)
+{
     Dwarf_Op *ops;
     size_t nops = 0;
     if (dwarf_frame_cfa(frame, &ops, &nops) != 0)
@@ -305,6 +306,49 @@ bool dwarf_get_frame_cfa(dwarf_t *dwarf,
 
     *reg_no = ops->number;
     *offset = ops->number2;
+
+    return true;
+}
+
+bool dwarf_get_frame_cfa(dwarf_t *dwarf, size_t addr, int *reg_no, int *offset)
+{
+    Dwarf_Frame *frame;
+    if (!dwarf_get_frame(dwarf, addr, &frame))
+        return false;
+
+    if (!__dwarf_get_frame_cfa(frame, reg_no, offset))
+        return false;
+
+    return true;
+}
+
+bool dwarf_get_frame_reg(dwarf_t *dwarf,
+                         size_t addr,
+                         int req_reg,
+                         int *reg_no,
+                         int *offset)
+{
+    Dwarf_Frame *frame;
+    if (!dwarf_get_frame(dwarf, addr, &frame))
+        return false;
+
+    Dwarf_Op *ops;
+    Dwarf_Op ops_mem[3];
+    size_t nops = 0;
+    if (dwarf_frame_register(frame, req_reg, ops_mem, &ops, &nops) != 0)
+        return false;
+
+    /* FIXME: The following is the only case we will handle now */
+    if (nops != 2 || ops[0].atom != DW_OP_call_frame_cfa ||
+        ops[1].atom != DW_OP_plus_uconst)
+        return false;
+
+
+    if (!__dwarf_get_frame_cfa(frame, reg_no, offset))
+        return false;
+
+    *offset = *offset + ops[1].number;
+
     return true;
 }
 
