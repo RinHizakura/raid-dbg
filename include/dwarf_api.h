@@ -29,6 +29,7 @@ typedef struct {
 typedef struct {
     Dwarf_Addr low_pc;
     Dwarf_Addr high_pc;
+    const char *name;
 } func_t;
 
 bool dwarf_init(dwarf_t *dwarf, char *file);

@@ -237,13 +237,8 @@ bool dwarf_get_addr_func(dwarf_t *dwarf, Dwarf_Addr addr, func_t *func)
 
     Dwarf_Die *scopes;
     int scopes_cnt = dwarf_getscopes(&die, addr, &scopes);
-    for (int i = 0; i < scopes_cnt; i++) {
-        if (dwarf_attr(&scopes[i], DW_AT_name, &attr_result)) {
-            const char *str = dwarf_formstring(&attr_result);
-            if (str != NULL)
-                printf("\tscope %d: %s\n", i, str);
-        }
-    }
+    if (scopes_cnt < 1)
+        return false;
 
     Dwarf_Die *func_die = &scopes[0];
     Dwarf_Sword offset;
@@ -256,6 +251,12 @@ bool dwarf_get_addr_func(dwarf_t *dwarf, Dwarf_Addr addr, func_t *func)
         dwarf_formsdata(&attr_result, &offset))
         return false;
     func->high_pc = func->low_pc + offset - 1;
+
+    if (!dwarf_attr(func_die, DW_AT_name, &attr_result))
+        return false;
+    func->name = dwarf_formstring(&attr_result);
+    if (func->name == NULL)
+        return false;
 
     return true;
 }

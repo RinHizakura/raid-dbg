@@ -313,7 +313,16 @@ static bool do_backtrace(int argc, char *argv[])
                              DWARF_RA_REGNO, &reg_no, &offset))
         return false;
 
-    printf("RA at %d %d\n", reg_no, offset);
+    size_t ra_addr, ra;
+    target_get_reg(&gDbg->target, regno_map[reg_no], &ra_addr);
+    target_read_mem(&gDbg->target, &ra, sizeof(size_t), ra_addr + offset);
+
+    func_t f;
+    if (!dwarf_get_addr_func(&gDbg->dwarf, ra - gDbg->base_addr, &f))
+        return false;
+
+    printf("frame #0: %s\n", f.name);
+
     return true;
 }
 

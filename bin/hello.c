@@ -10,9 +10,16 @@ int minus(int a, int b)
     return a - b;
 }
 
+int mul(int a, int b)
+{
+    return a * b;
+}
+
 int calc(int a, int b, int c)
 {
-    return minus(add(a, b), c);
+    int x = add(a, b);
+    int y = minus(b, c);
+    return mul(x, y);
 }
 
 int main()
