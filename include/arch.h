@@ -47,6 +47,7 @@ typedef struct {
 extern const uint8_t INT3[1];
 extern const struct reg_desc reg_desc_array[REGS_CNT];
 extern const int regno_map[16];
+extern const int reverse_regno_map[REGS_CNT];
 
 #else
 #error "unsupported architecture"

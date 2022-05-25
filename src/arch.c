@@ -33,19 +33,40 @@ const struct reg_desc reg_desc_array[REGS_CNT] = {
     [GS]       = {"gs"},
 };
 
-/* Reference: [x86_64_abi](https://refspecs.linuxfoundation.org/elf/x86_64-abi-0.95.pdf)
+/* Reference:
+ * [x86_64_abi](https://refspecs.linuxfoundation.org/elf/x86_64-abi-0.95.pdf)
  * Figure 3.36: DWARF Register Number Mapping */
-const int regno_map[16] = {
-    [0] = RAX,
-    [1] = RDX,
-    [2] = RCX,
-    [3] = RBX,
-    [4] = RSI,
-    [5] = RDI,
-    [6] = RBP,
-    [7] = RSP,
-#define X(n) [n] = R##n
-    X(8), X(9), X(10), X(11), X(12), X(13), X(14), X(15),
-#undef X
-};
+
+#define R_PAIR(n) PAIR(n, R##n)
+#define REG_PAIR      \
+    PAIR(0, RAX),     \
+    PAIR(1, RDX),     \
+    PAIR(2, RCX),     \
+    PAIR(3, RBX),     \
+    PAIR(4, RSI),     \
+    PAIR(5, RDI),     \
+    PAIR(6, RBP),     \
+    PAIR(7, RSP),     \
+    R_PAIR(8),        \
+    R_PAIR(9),        \
+    R_PAIR(10),       \
+    R_PAIR(11),       \
+    R_PAIR(12),       \
+    R_PAIR(13),       \
+    R_PAIR(14),       \
+    R_PAIR(15),
+
 /* clang-format on */
+
+/* FIXME: There's some register index which aren't map */
+const int regno_map[16] = {
+#define PAIR(a, b) [a] = b
+    REG_PAIR
+#undef PAIR
+};
+
+const int reverse_regno_map[REGS_CNT] = {
+#define PAIR(a, b) [b] = a
+    REG_PAIR
+#undef PAIR
+};
