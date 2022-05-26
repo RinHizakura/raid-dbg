@@ -176,6 +176,20 @@ static bool do_step(__attribute__((unused)) int argc,
     return true;
 }
 
+static bool dbg_get_ra(dbg_t *dbg, size_t addr, size_t *ra)
+{
+    int reg_no, offset;
+    if (!dwarf_get_frame_reg(&gDbg->dwarf, addr - dbg->base_addr,
+                             DWARF_RA_REGNO, &reg_no, &offset))
+        return false;
+
+    size_t ra_addr;
+    target_get_reg(&gDbg->target, regno_map[reg_no], &ra_addr);
+    target_read_mem(&gDbg->target, ra, sizeof(size_t), ra_addr + offset);
+
+    return true;
+}
+
 static bool do_next(__attribute__((unused)) int argc,
                     __attribute__((unused)) char *argv[])
 {
@@ -205,6 +219,7 @@ static bool do_next(__attribute__((unused)) int argc,
     if (!dwarf_get_addr_src(&gDbg->dwarf, func.high_pc, NULL, &end_linep))
         return false;
 
+    size_t int3 = INT3[0];
     for (int l = start_linep; l < end_linep; l++) {
         if (l == linep)
             continue;
@@ -213,17 +228,21 @@ static bool do_next(__attribute__((unused)) int argc,
         if (!dwarf_get_line_addr(&gDbg->dwarf, file_name, l, &bp_addr))
             return false;
 
-        size_t int3 = INT3[0];
         target_write_mem(&gDbg->target, &int3, sizeof(int3),
                          bp_addr + gDbg->base_addr);
     }
 
-    /* TODO: We also need to set breakpoint at return address. I'll
-     * complete this once we have stack unwinding. */
+    /* We also need to set breakpoint at return address */
+    size_t ra, ra_instr;
+    if (!dbg_get_ra(gDbg, addr, &ra))
+        return false;
+    target_read_mem(&gDbg->target, &ra_instr, sizeof(size_t), ra);
+    target_write_mem(&gDbg->target, &int3, sizeof(int3), ra);
 
     if (!target_conti(&gDbg->target))
         return false;
     target_write_mem(&gDbg->target, buf, len, func.low_pc + gDbg->base_addr);
+    target_write_mem(&gDbg->target, &ra_instr, sizeof(size_t), ra);
     free(buf);
 
     target_get_reg(&gDbg->target, RIP, &addr);
@@ -306,20 +325,15 @@ static bool do_break(int argc, char *argv[])
 static bool do_backtrace(int argc, char *argv[])
 {
     size_t addr;
-    int reg_no, offset;
-    int frame_no = 0;
     func_t f;
+    int frame_no = 0;
 
     target_get_reg(&gDbg->target, RIP, &addr);
 
     do {
-        if (!dwarf_get_frame_reg(&gDbg->dwarf, addr - gDbg->base_addr,
-                                 DWARF_RA_REGNO, &reg_no, &offset))
+        size_t ra;
+        if (!dbg_get_ra(gDbg, addr, &ra))
             return false;
-
-        size_t ra_addr, ra;
-        target_get_reg(&gDbg->target, regno_map[reg_no], &ra_addr);
-        target_read_mem(&gDbg->target, &ra, sizeof(size_t), ra_addr + offset);
 
         if (!dwarf_get_addr_func(&gDbg->dwarf, ra - gDbg->base_addr, &f))
             return false;
