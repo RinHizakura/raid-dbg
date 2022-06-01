@@ -102,7 +102,8 @@ static int test_callback(Dwarf_Die *die, __attribute__((unused)) void *arg)
 
     die_iter_child_start(&die_iter, die);
     while (die_iter_child_next(&die_iter, &die_result)) {
-        if (dwarf_tag(&die_result) != DW_TAG_formal_parameter)
+        int tag = dwarf_tag(&die_result);
+        if (tag != DW_TAG_formal_parameter && tag != DW_TAG_variable)
             continue;
 
         if (!dwarf_attr(&die_result, DW_AT_name, &attr_result))
@@ -110,8 +111,13 @@ static int test_callback(Dwarf_Die *die, __attribute__((unused)) void *arg)
 
         const char *str = dwarf_formstring(&attr_result);
 
+        char *type;
+        if (tag == DW_TAG_formal_parameter)
+            type = "param";
+        else
+            type = "variable";
         if (str != NULL)
-            printf("\t\tparam %s\n", str);
+            printf("\t\t%s %s\n", type, str);
     }
 
     return DWARF_CB_OK;
