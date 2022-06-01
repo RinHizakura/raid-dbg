@@ -33,11 +33,12 @@ typedef struct {
 } func_t;
 
 bool dwarf_init(dwarf_t *dwarf, char *file);
-bool dwarf_get_symbol_addr(dwarf_t *dwarf, char *sym, size_t *addr);
+bool dwarf_get_func_symbol_addr(dwarf_t *dwarf, char *sym, size_t *addr);
 bool dwarf_get_addr_src(dwarf_t *dwarf,
                         Dwarf_Addr addr,
                         const char **name,
                         int *linep);
+bool dwarf_get_var_symbol_addr(dwarf_t *dwarf, Dwarf_Addr scope_pc);
 bool dwarf_get_addr_func(dwarf_t *dwarf, Dwarf_Addr addr, func_t *func);
 bool dwarf_get_line_addr(dwarf_t *dwarf,
                          const char *fname,

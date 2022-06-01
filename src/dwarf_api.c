@@ -187,7 +187,9 @@ static int dwarf_get_symbol_addr_cb(Dwarf_Die *die, void *arg)
     return DWARF_CB_ABORT;
 }
 
-bool dwarf_get_symbol_addr(dwarf_t *dwarf, char *sym, size_t *addr)
+/* FIXME: consider if there are many static functions with same
+ * names, what will happend? */
+bool dwarf_get_func_symbol_addr(dwarf_t *dwarf, char *sym, size_t *addr)
 {
     cu_t cu;
     dwarf_iter_t iter;
@@ -233,10 +235,11 @@ bool dwarf_get_addr_src(dwarf_t *dwarf,
     return true;
 }
 
-bool dwarf_get_addr_func(dwarf_t *dwarf, Dwarf_Addr addr, func_t *func)
+static bool dwarf_get_scope_die(dwarf_t *dwarf,
+                                Dwarf_Addr addr,
+                                Dwarf_Die **func_die)
 {
     Dwarf_Die die;
-    Dwarf_Attribute attr_result;
 
     if (!dwarf_addrdie(dwarf->inner, addr, &die))
         return false;
@@ -246,8 +249,54 @@ bool dwarf_get_addr_func(dwarf_t *dwarf, Dwarf_Addr addr, func_t *func)
     if (scopes_cnt < 1)
         return false;
 
-    Dwarf_Die *func_die = &scopes[0];
+    *func_die = &scopes[0];
+    return true;
+}
+
+bool dwarf_get_var_symbol_addr(dwarf_t *dwarf, Dwarf_Addr scope_pc)
+{
+    /* We need to consider the current scope to pick only
+     * the visible variable */
+
+    /* FIXME: support global variable */
+
+    Dwarf_Die *func_die;
+    if (!dwarf_get_scope_die(dwarf, scope_pc, &func_die))
+        return false;
+
+    Dwarf_Die die_result;
+    Dwarf_Attribute attr_result;
+    die_iter_t die_iter;
+
+    die_iter_child_start(&die_iter, func_die);
+    while (die_iter_child_next(&die_iter, &die_result)) {
+        int tag = dwarf_tag(&die_result);
+        if (tag != DW_TAG_formal_parameter && tag != DW_TAG_variable)
+            continue;
+
+        if (!dwarf_attr(&die_result, DW_AT_name, &attr_result))
+            continue;
+
+        const char *str = dwarf_formstring(&attr_result);
+
+        char *type;
+        if (tag == DW_TAG_formal_parameter)
+            type = "param";
+        else
+            type = "variable";
+        if (str != NULL)
+            printf("%s %s\n", type, str);
+    }
+    return true;
+}
+
+bool dwarf_get_addr_func(dwarf_t *dwarf, Dwarf_Addr addr, func_t *func)
+{
     Dwarf_Sword offset;
+    Dwarf_Attribute attr_result;
+    Dwarf_Die *func_die;
+    if (!dwarf_get_scope_die(dwarf, addr, &func_die))
+        return false;
 
     if (!dwarf_attr(func_die, DW_AT_low_pc, &attr_result) ||
         dwarf_formaddr(&attr_result, &func->low_pc))

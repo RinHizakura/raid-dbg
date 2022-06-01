@@ -253,7 +253,7 @@ static bool do_next(__attribute__((unused)) int argc,
 
 static bool dbg_set_symbol_bp(dbg_t *dbg, char *bp_name, size_t *addr)
 {
-    if (!dwarf_get_symbol_addr(&dbg->dwarf, bp_name, addr))
+    if (!dwarf_get_func_symbol_addr(&dbg->dwarf, bp_name, addr))
         return false;
 
     *addr += dbg->base_addr;
@@ -322,7 +322,8 @@ static bool do_break(int argc, char *argv[])
     return true;
 }
 
-static bool do_backtrace(int argc, char *argv[])
+static bool do_backtrace(__attribute__((unused)) int argc,
+                         __attribute__((unused)) char *argv[])
 {
     size_t addr;
     func_t f;
@@ -361,6 +362,14 @@ static bool do_regs_read(int argc, char *argv[])
     }
 
     return ret;
+}
+
+static bool do_variable(__attribute__((unused)) int argc,
+                        __attribute__((unused)) char *argv[])
+{
+    size_t scope_pc;
+    target_get_reg(&gDbg->target, RIP, &scope_pc);
+    return dwarf_get_var_symbol_addr(&gDbg->dwarf, scope_pc - gDbg->base_addr);
 }
 
 static bool cmd_maybe(const char *target, const char *src)
@@ -438,6 +447,9 @@ bool dbg_init(dbg_t *dbg, char *cmd)
     dbg_add_cmd(dbg, "step", do_step, "step in to the next line.");
     dbg_add_cmd(dbg, "next", do_next, "step over to the next line.");
     dbg_add_cmd(dbg, "backtrace", do_backtrace, "backtrace the call frame.");
+    /* FIXME: this command is only added for test */
+    dbg_add_cmd(dbg, "variable", do_variable,
+                "dump all the visible variables.");
 
     dbg_add_cmd(dbg, "regs", NULL, "dump registers.");
     dgb_add_option(dbg, "regs", "read", do_regs_read);
