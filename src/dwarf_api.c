@@ -253,10 +253,39 @@ static bool dwarf_get_scope_die(dwarf_t *dwarf,
     return true;
 }
 
-bool dwarf_get_var_symbol_addr(dwarf_t *dwarf, Dwarf_Addr scope_pc)
+static bool dwarf_get_die_var(Dwarf_Die *func_die,
+                              char *name,
+                              Dwarf_Die *die_result)
+{
+    Dwarf_Attribute attr_result;
+    die_iter_t die_iter;
+    bool found = false;
+
+    die_iter_child_start(&die_iter, func_die);
+
+    while (die_iter_child_next(&die_iter, die_result)) {
+        int tag = dwarf_tag(die_result);
+        if (tag != DW_TAG_formal_parameter && tag != DW_TAG_variable)
+            continue;
+
+        if (!dwarf_attr(die_result, DW_AT_name, &attr_result))
+            continue;
+
+        const char *str = dwarf_formstring(&attr_result);
+
+        if (strcmp(str, name) == 0) {
+            found = true;
+            break;
+        }
+    }
+
+    return found;
+}
+
+bool dwarf_get_var_symbol_addr(dwarf_t *dwarf, Dwarf_Addr scope_pc, char *name)
 {
     /* We need to consider the current scope to pick only
-     * the visible variable */
+     * the visible variable, so the input parameters including scope_pc. */
 
     /* FIXME: support global variable */
 
@@ -265,28 +294,23 @@ bool dwarf_get_var_symbol_addr(dwarf_t *dwarf, Dwarf_Addr scope_pc)
         return false;
 
     Dwarf_Die die_result;
+    if (!dwarf_get_die_var(func_die, name, &die_result))
+        return false;
+
     Dwarf_Attribute attr_result;
-    die_iter_t die_iter;
+    if (!dwarf_attr(&die_result, DW_AT_location, &attr_result))
+        return false;
 
-    die_iter_child_start(&die_iter, func_die);
-    while (die_iter_child_next(&die_iter, &die_result)) {
-        int tag = dwarf_tag(&die_result);
-        if (tag != DW_TAG_formal_parameter && tag != DW_TAG_variable)
-            continue;
+    Dwarf_Op *ops;
+    size_t nops = 0;
+    if (dwarf_getlocation(&attr_result, &ops, &nops))
+        return false;
 
-        if (!dwarf_attr(&die_result, DW_AT_name, &attr_result))
-            continue;
+    /* FIXME: This is the only dwarf location operation we consider now. */
+    if (ops->atom != DW_OP_fbreg || nops != 1)
+        return false;
 
-        const char *str = dwarf_formstring(&attr_result);
-
-        char *type;
-        if (tag == DW_TAG_formal_parameter)
-            type = "param";
-        else
-            type = "variable";
-        if (str != NULL)
-            printf("%s %s\n", type, str);
-    }
+    /* TODO! */
     return true;
 }
 

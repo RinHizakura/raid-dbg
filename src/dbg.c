@@ -367,9 +367,18 @@ static bool do_regs_read(int argc, char *argv[])
 static bool do_variable(__attribute__((unused)) int argc,
                         __attribute__((unused)) char *argv[])
 {
+    if (argc != 2)
+        return false;
+
+    char *var_name = argv[1];
     size_t scope_pc;
+
     target_get_reg(&gDbg->target, RIP, &scope_pc);
-    return dwarf_get_var_symbol_addr(&gDbg->dwarf, scope_pc - gDbg->base_addr);
+    if (!dwarf_get_var_symbol_addr(&gDbg->dwarf, scope_pc - gDbg->base_addr,
+                                   var_name))
+        return false;
+
+    return true;
 }
 
 static bool cmd_maybe(const char *target, const char *src)
