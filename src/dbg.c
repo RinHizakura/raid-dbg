@@ -374,10 +374,20 @@ static bool do_variable(__attribute__((unused)) int argc,
     size_t scope_pc;
 
     target_get_reg(&gDbg->target, RIP, &scope_pc);
+    int reg_no, offset;
     if (!dwarf_get_var_symbol_addr(&gDbg->dwarf, scope_pc - gDbg->base_addr,
-                                   var_name))
+                                   var_name, &reg_no, &offset))
         return false;
 
+    size_t addr;
+    int value;
+    target_get_reg(&gDbg->target, regno_map[reg_no], &addr);
+    target_read_mem(&gDbg->target, &value, sizeof(int), addr + offset);
+
+    /* FIXME:
+     * 1. Consider the type of variable to read the correct bytes count
+     * 2. Consider the strange value when stopping at function prologue */
+    printf("value '%s' = %d\n", var_name, value);
     return true;
 }
 

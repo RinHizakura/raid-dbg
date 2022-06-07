@@ -2,6 +2,7 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
+#include "arch.h"
 #include "dwarf.h"
 
 static bool dwarf_cu_get_die(dwarf_t *dwarf, cu_t *cu, Dwarf_Die *die_result)
@@ -282,7 +283,11 @@ static bool dwarf_get_die_var(Dwarf_Die *func_die,
     return found;
 }
 
-bool dwarf_get_var_symbol_addr(dwarf_t *dwarf, Dwarf_Addr scope_pc, char *name)
+bool dwarf_get_var_symbol_addr(dwarf_t *dwarf,
+                               Dwarf_Addr scope_pc,
+                               char *name,
+                               int *reg_no,
+                               int *offset)
 {
     /* We need to consider the current scope to pick only
      * the visible variable, so the input parameters including scope_pc. */
@@ -310,7 +315,11 @@ bool dwarf_get_var_symbol_addr(dwarf_t *dwarf, Dwarf_Addr scope_pc, char *name)
     if (ops->atom != DW_OP_fbreg || nops != 1)
         return false;
 
-    /* TODO! */
+    if (!dwarf_get_frame_cfa(dwarf, scope_pc, reg_no, offset))
+        return false;
+    /* Add extra offset to find the address of variable */
+    *offset = *offset + ops->number;
+
     return true;
 }
 
