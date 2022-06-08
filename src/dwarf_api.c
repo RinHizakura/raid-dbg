@@ -69,6 +69,24 @@ static bool die_iter_child_next(die_iter_t *iter, Dwarf_Die *die_result)
     return true;
 }
 
+static void test_dump_var(Dwarf_Die *die_result, int tag)
+{
+    Dwarf_Attribute attr_result;
+
+    if (!dwarf_attr(die_result, DW_AT_name, &attr_result))
+        return;
+
+    const char *str = dwarf_formstring(&attr_result);
+
+    char *type;
+    if (tag == DW_TAG_formal_parameter)
+        type = "param";
+    else
+        type = "variable";
+    if (str != NULL)
+        printf("\t\t%s %s\n", type, str);
+}
+
 static int test_callback(Dwarf_Die *die, __attribute__((unused)) void *arg)
 {
     Dwarf_Die die_result;
@@ -104,21 +122,14 @@ static int test_callback(Dwarf_Die *die, __attribute__((unused)) void *arg)
     die_iter_child_start(&die_iter, die);
     while (die_iter_child_next(&die_iter, &die_result)) {
         int tag = dwarf_tag(&die_result);
-        if (tag != DW_TAG_formal_parameter && tag != DW_TAG_variable)
-            continue;
 
-        if (!dwarf_attr(&die_result, DW_AT_name, &attr_result))
-            continue;
-
-        const char *str = dwarf_formstring(&attr_result);
-
-        char *type;
-        if (tag == DW_TAG_formal_parameter)
-            type = "param";
-        else
-            type = "variable";
-        if (str != NULL)
-            printf("\t\t%s %s\n", type, str);
+        switch (tag) {
+        case DW_TAG_formal_parameter:
+        case DW_TAG_variable:
+            test_dump_var(&die_result, tag);
+        default:
+            break;
+        }
     }
 
     return DWARF_CB_OK;
