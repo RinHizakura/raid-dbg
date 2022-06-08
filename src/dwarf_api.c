@@ -80,24 +80,40 @@ static void test_dump_var(Dwarf_Die *die_result, int tag)
 
     char *type;
     if (tag == DW_TAG_formal_parameter)
-        type = "param";
+        type = "param   ";
     else
         type = "variable";
     if (str != NULL)
-        printf("\t\t%s %s\n", type, str);
+        printf("\t\t%s %s", type, str);
+
+    if (!dwarf_attr(die_result, DW_AT_type, &attr_result))
+        return;
+
+    Dwarf_Die type_die;
+    if (!dwarf_formref_die(&attr_result, &type_die))
+        return;
+
+    /* FIXME: Consider the aliasing type name, we may have to iterate the die
+     * using dwarf_peel_type */
+
+    if ((dwarf_tag(&type_die) != DW_TAG_base_type) ||
+        !dwarf_attr(&type_die, DW_AT_byte_size, &attr_result)) {
+        printf("\n");
+        return;
+    }
+
+    Dwarf_Word bytes;
+    if (!dwarf_formudata(&attr_result, &bytes))
+        printf(": bytes %lx\n", bytes);
 }
 
-static int test_callback(Dwarf_Die *die, __attribute__((unused)) void *arg)
+static void test_parse_subprogram(Dwarf_Die *die)
 {
     Dwarf_Die die_result;
     die_iter_t die_iter;
     Dwarf_Attribute attr_result;
     Dwarf_Word line;
     Dwarf_Addr addr;
-
-    if (dwarf_tag(die) != DW_TAG_subprogram) {
-        return DWARF_CB_OK;
-    }
 
     const char *file = dwarf_decl_file(die);
     if (file != NULL)
@@ -127,9 +143,17 @@ static int test_callback(Dwarf_Die *die, __attribute__((unused)) void *arg)
         case DW_TAG_formal_parameter:
         case DW_TAG_variable:
             test_dump_var(&die_result, tag);
+            break;
         default:
             break;
         }
+    }
+}
+
+static int test_func_callback(Dwarf_Die *die, __attribute__((unused)) void *arg)
+{
+    if (dwarf_tag(die) == DW_TAG_subprogram) {
+        test_parse_subprogram(die);
     }
 
     return DWARF_CB_OK;
@@ -147,7 +171,7 @@ static void test1(dwarf_t *dwarf)
         dwarf_cu_get_die(dwarf, &cu, &die_result);
 
         if (dwarf_tag(&die_result) == DW_TAG_compile_unit) {
-            dwarf_getfuncs(&die_result, test_callback, NULL, 0);
+            dwarf_getfuncs(&die_result, test_func_callback, NULL, 0);
         }
     }
 }

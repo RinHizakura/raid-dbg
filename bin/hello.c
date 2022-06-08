@@ -22,10 +22,15 @@ int calc(int a, int b, int c)
     return mul(x, y);
 }
 
+void print_int(char *str, int num)
+{
+    printf("%s %d\n", str, num);
+}
+
 int main()
 {
-    printf("hello world %d\n", add(2, 3));
-    printf("hello happy world %d\n", minus(4, 2));
-    printf("ans %d\n", calc(4, 2, 3));
+    print_int("hello world", add(2, 3));
+    print_int("hello happy world", minus(4, 2));
+    print_int("ans", calc(4, 2, 3));
     return 0;
 }
