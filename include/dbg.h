@@ -11,6 +11,9 @@ typedef struct {
     dwarf_t dwarf;
     size_t base_addr;
     struct list_head list;
+
+    /* Record the print count to output as gdb does. */
+    size_t print_cnt;
 } dbg_t;
 
 bool dbg_init(dbg_t *dbg, char *cmd);

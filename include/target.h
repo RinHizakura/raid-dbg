@@ -28,7 +28,7 @@ bool target_set_breakpoint(target_t *t, size_t addr);
 bool target_set_reg(target_t *t, size_t idx, size_t value);
 bool target_get_reg(target_t *t, size_t idx, size_t *value);
 bool target_get_reg_by_name(target_t *t, char *name, size_t *value);
-bool target_read_mem(target_t *t, size_t *buf, size_t len, size_t target_addr);
+bool target_read_mem(target_t *t, void *buf, size_t len, size_t target_addr);
 bool target_write_mem(target_t *t, size_t *buf, size_t len, size_t target_addr);
 void target_close(target_t *t);
 #endif

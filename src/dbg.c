@@ -364,8 +364,8 @@ static bool do_regs_read(int argc, char *argv[])
     return ret;
 }
 
-static bool do_variable(__attribute__((unused)) int argc,
-                        __attribute__((unused)) char *argv[])
+static bool do_print(__attribute__((unused)) int argc,
+                     __attribute__((unused)) char *argv[])
 {
     if (argc != 2)
         return false;
@@ -384,10 +384,8 @@ static bool do_variable(__attribute__((unused)) int argc,
     target_get_reg(&gDbg->target, regno_map[reg_no], &addr);
     target_read_mem(&gDbg->target, &value, sizeof(int), addr + offset);
 
-    /* FIXME:
-     * 1. Consider the type of variable to read the correct bytes count
-     * 2. Consider the strange value when stopping at function prologue */
-    printf("value '%s' = %d\n", var_name, value);
+    /* FIXME: Consider the type of variable to read the correct bytes count */
+    printf("$%ld = %d\n", ++gDbg->print_cnt, value);
     return true;
 }
 
@@ -447,6 +445,8 @@ static bool dbg_init_debuggee_base(dbg_t *dbg)
 
 bool dbg_init(dbg_t *dbg, char *cmd)
 {
+    memset(dbg, 0, sizeof(dbg_t));
+
     if (!target_lauch(&dbg->target, cmd))
         return false;
 
@@ -467,8 +467,7 @@ bool dbg_init(dbg_t *dbg, char *cmd)
     dbg_add_cmd(dbg, "next", do_next, "step over to the next line.");
     dbg_add_cmd(dbg, "backtrace", do_backtrace, "backtrace the call frame.");
     /* FIXME: this command is only added for test */
-    dbg_add_cmd(dbg, "variable", do_variable,
-                "dump all the visible variables.");
+    dbg_add_cmd(dbg, "print", do_print, "dump the request variables.");
 
     dbg_add_cmd(dbg, "regs", NULL, "dump registers.");
     dgb_add_option(dbg, "regs", "read", do_regs_read);
