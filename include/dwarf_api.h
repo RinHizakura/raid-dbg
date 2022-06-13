@@ -42,7 +42,8 @@ bool dwarf_get_var_symbol_addr(dwarf_t *dwarf,
                                Dwarf_Addr scope_pc,
                                char *name,
                                int *reg_no,
-                               int *offset);
+                               int *offset,
+                               size_t *bytes);
 bool dwarf_get_addr_func(dwarf_t *dwarf, Dwarf_Addr addr, func_t *func);
 bool dwarf_get_line_addr(dwarf_t *dwarf,
                          const char *fname,

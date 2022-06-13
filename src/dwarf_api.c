@@ -318,11 +318,27 @@ static bool dwarf_get_die_var(Dwarf_Die *func_die,
     return found;
 }
 
+static bool dwarf_get_var_type(Dwarf_Die *var_die, Dwarf_Word *bytes)
+{
+    Dwarf_Die type_die;
+    Dwarf_Attribute attr_result;
+
+    if (!dwarf_attr(var_die, DW_AT_type, &attr_result) ||
+        !dwarf_formref_die(&attr_result, &type_die) ||
+        (dwarf_tag(&type_die) != DW_TAG_base_type) ||
+        !dwarf_attr(&type_die, DW_AT_byte_size, &attr_result) ||
+        dwarf_formudata(&attr_result, bytes))
+        return false;
+
+    return true;
+}
+
 bool dwarf_get_var_symbol_addr(dwarf_t *dwarf,
                                Dwarf_Addr scope_pc,
                                char *name,
                                int *reg_no,
-                               int *offset)
+                               int *offset,
+                               size_t *bytes)
 {
     /* We need to consider the current scope to pick only
      * the visible variable, so the input parameters including scope_pc. */
@@ -354,6 +370,9 @@ bool dwarf_get_var_symbol_addr(dwarf_t *dwarf,
         return false;
     /* Add extra offset to find the address of variable */
     *offset = *offset + ops->number;
+
+    if (bytes != NULL && !dwarf_get_var_type(&die_result, bytes))
+        return false;
 
     return true;
 }

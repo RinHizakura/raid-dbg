@@ -375,16 +375,16 @@ static bool do_print(__attribute__((unused)) int argc,
 
     target_get_reg(&gDbg->target, RIP, &scope_pc);
     int reg_no, offset;
+    size_t bytes = 0;
     if (!dwarf_get_var_symbol_addr(&gDbg->dwarf, scope_pc - gDbg->base_addr,
-                                   var_name, &reg_no, &offset))
+                                   var_name, &reg_no, &offset, &bytes))
         return false;
 
     size_t addr;
     int value;
     target_get_reg(&gDbg->target, regno_map[reg_no], &addr);
-    target_read_mem(&gDbg->target, &value, sizeof(int), addr + offset);
+    target_read_mem(&gDbg->target, &value, bytes, addr + offset);
 
-    /* FIXME: Consider the type of variable to read the correct bytes count */
     printf("$%ld = %d\n", ++gDbg->print_cnt, value);
     return true;
 }
