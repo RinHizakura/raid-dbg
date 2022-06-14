@@ -272,7 +272,7 @@ static bool dwarf_expr_fbreg(dwarf_t *dwarf,
     return true;
 }
 
-static void dwarf_expr_addr(dwarf_t *dwarf, Dwarf_Op *ops, var_t *var)
+static void dwarf_expr_addr(Dwarf_Op *ops, var_t *var)
 {
     var->addr = ops->number;
     var->type = VAR_TYPE_ADDR;
@@ -312,7 +312,7 @@ bool dwarf_get_var_symbol_addr(dwarf_t *dwarf,
         dwarf_expr_fbreg(dwarf, ops, scope_pc, var);
         break;
     case DW_OP_addr:
-        dwarf_expr_addr(dwarf, ops, var);
+        dwarf_expr_addr(ops, var);
         break;
     default:
         break;
