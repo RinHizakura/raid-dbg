@@ -61,6 +61,8 @@ static bool target_wait_sig(target_t *t)
 
     if (WIFSTOPPED(wstatus) && (WSTOPSIG(wstatus) == SIGTRAP)) {
         siginfo_t info;
+        memset(&info, 0, sizeof(siginfo_t));
+
         ptrace(PTRACE_GETSIGINFO, t->pid, 0, &info);
 
         switch (info.si_signo) {
