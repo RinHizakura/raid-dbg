@@ -159,6 +159,23 @@ static int test_func_callback(Dwarf_Die *die, __attribute__((unused)) void *arg)
     return DWARF_CB_OK;
 }
 
+static void test_iter_tag(Dwarf_Die *die, int tag)
+{
+    Dwarf_Die die_result;
+    die_iter_t die_iter;
+
+    printf("Global variable symbol:\n");
+
+    die_iter_child_start(&die_iter, die);
+    while (die_iter_child_next(&die_iter, &die_result)) {
+        int child_tag = dwarf_tag(&die_result);
+
+        if (child_tag == tag) {
+            test_dump_var(&die_result, DW_TAG_variable);
+        }
+    }
+}
+
 static void test1(dwarf_t *dwarf)
 {
     cu_t cu;
@@ -172,6 +189,7 @@ static void test1(dwarf_t *dwarf)
 
         if (dwarf_tag(&die_result) == DW_TAG_compile_unit) {
             dwarf_getfuncs(&die_result, test_func_callback, NULL, 0);
+            test_iter_tag(&die_result, DW_TAG_variable);
         }
     }
 }

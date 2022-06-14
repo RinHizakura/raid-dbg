@@ -27,10 +27,11 @@ void print_int(char *str, int num)
     printf("%s %d\n", str, num);
 }
 
+static int gNum = 3;
 int main()
 {
     print_int("hello world", add(2, 3));
     print_int("hello happy world", minus(4, 2));
-    print_int("ans", calc(4, 2, 3));
+    print_int("ans", calc(4, 2, gNum));
     return 0;
 }
