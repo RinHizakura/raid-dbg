@@ -266,7 +266,6 @@ bool dwarf_get_func_symbol_addr(dwarf_t *dwarf, char *sym, size_t *addr)
     return false;
 }
 
-
 bool dwarf_get_addr_src(dwarf_t *dwarf,
                         Dwarf_Addr addr,
                         const char **name,
@@ -351,27 +350,80 @@ static bool dwarf_get_var_type(Dwarf_Die *var_die, Dwarf_Word *bytes)
     return true;
 }
 
-bool dwarf_get_var_symbol_addr(dwarf_t *dwarf,
-                               Dwarf_Addr scope_pc,
-                               char *name,
-                               int *reg_no,
-                               int *offset,
-                               size_t *bytes)
+static bool dwarf_get_global_var_symbol_addr(dwarf_t *dwarf,
+                                             char *name,
+                                             Dwarf_Die *die_result)
 {
-    /* We need to consider the current scope to pick only
-     * the visible variable, so the input parameters including scope_pc. */
+    cu_t cu;
+    dwarf_iter_t iter;
+    Dwarf_Die cu_die;
 
-    /* FIXME: support global variable */
+    dwarf_iter_start(&iter, dwarf);
+    while (dwarf_iter_next(&iter, &cu)) {
+        dwarf_cu_get_die(dwarf, &cu, &cu_die);
 
+        if (dwarf_tag(&cu_die) == DW_TAG_compile_unit) {
+            if (dwarf_get_die_var(&cu_die, name, die_result)) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+static bool dwarf_get_local_var_symbol_addr(dwarf_t *dwarf,
+                                            Dwarf_Addr scope_pc,
+                                            char *name,
+                                            Dwarf_Die *die_result)
+{
     Dwarf_Die *func_die;
     if (!dwarf_get_scope_die(dwarf, scope_pc, &func_die))
         return false;
 
-    Dwarf_Die die_result;
-    if (!dwarf_get_die_var(func_die, name, &die_result))
+    if (!dwarf_get_die_var(func_die, name, die_result))
         return false;
 
+    return true;
+}
+
+static bool dwarf_expr_fbreg(dwarf_t *dwarf,
+                             Dwarf_Op *ops,
+                             Dwarf_Addr scope_pc,
+                             var_t *var)
+{
+    if (!dwarf_get_frame_cfa(dwarf, scope_pc, &var->reg_no, &var->offset))
+        return false;
+    /* Add extra offset to find the address of variable */
+    var->offset += ops->number;
+    var->type = VAR_TYPE_REG_OFF;
+
+    return true;
+}
+
+static void dwarf_expr_addr(dwarf_t *dwarf, Dwarf_Op *ops, var_t *var)
+{
+    var->addr = ops->number;
+    var->type = VAR_TYPE_ADDR;
+}
+
+bool dwarf_get_var_symbol_addr(dwarf_t *dwarf,
+                               Dwarf_Addr scope_pc,
+                               char *name,
+                               var_t *var)
+{
+    bool found = false;
+    Dwarf_Die die_result;
     Dwarf_Attribute attr_result;
+
+    found = dwarf_get_global_var_symbol_addr(dwarf, name, &die_result);
+
+    /* We need to consider the current scope to pick only
+     * the visible variable, so the input parameters including scope_pc. */
+    if (!found &&
+        !dwarf_get_local_var_symbol_addr(dwarf, scope_pc, name, &die_result))
+        return false;
+
     if (!dwarf_attr(&die_result, DW_AT_location, &attr_result))
         return false;
 
@@ -381,15 +433,21 @@ bool dwarf_get_var_symbol_addr(dwarf_t *dwarf,
         return false;
 
     /* FIXME: This is the only dwarf location operation we consider now. */
-    if (ops->atom != DW_OP_fbreg || nops != 1)
+    if ((ops->atom != DW_OP_fbreg && ops->atom != DW_OP_addr) || nops != 1)
         return false;
 
-    if (!dwarf_get_frame_cfa(dwarf, scope_pc, reg_no, offset))
-        return false;
-    /* Add extra offset to find the address of variable */
-    *offset = *offset + ops->number;
+    switch (ops->atom) {
+    case DW_OP_fbreg:
+        dwarf_expr_fbreg(dwarf, ops, scope_pc, var);
+        break;
+    case DW_OP_addr:
+        dwarf_expr_addr(dwarf, ops, var);
+        break;
+    default:
+        break;
+    }
 
-    if (bytes != NULL && !dwarf_get_var_type(&die_result, bytes))
+    if (!dwarf_get_var_type(&die_result, &var->bytes))
         return false;
 
     return true;

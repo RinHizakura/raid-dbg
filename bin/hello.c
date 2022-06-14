@@ -27,7 +27,7 @@ void print_int(char *str, int num)
     printf("%s %d\n", str, num);
 }
 
-static int gNum = 3;
+static int gNum = 996;
 int main()
 {
     print_int("hello world", add(2, 3));

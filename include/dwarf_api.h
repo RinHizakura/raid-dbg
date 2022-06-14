@@ -32,6 +32,24 @@ typedef struct {
     const char *name;
 } func_t;
 
+enum {
+    VAR_TYPE_REG_OFF,
+    VAR_TYPE_ADDR,
+};
+
+typedef struct {
+    int type;
+    size_t bytes;
+    union {
+        struct {
+            int reg_no;
+            int offset;
+        };
+
+        size_t addr;
+    };
+} var_t;
+
 bool dwarf_init(dwarf_t *dwarf, char *file);
 bool dwarf_get_func_symbol_addr(dwarf_t *dwarf, char *sym, size_t *addr);
 bool dwarf_get_addr_src(dwarf_t *dwarf,
@@ -41,9 +59,7 @@ bool dwarf_get_addr_src(dwarf_t *dwarf,
 bool dwarf_get_var_symbol_addr(dwarf_t *dwarf,
                                Dwarf_Addr scope_pc,
                                char *name,
-                               int *reg_no,
-                               int *offset,
-                               size_t *bytes);
+                               var_t *var);
 bool dwarf_get_addr_func(dwarf_t *dwarf, Dwarf_Addr addr, func_t *func);
 bool dwarf_get_line_addr(dwarf_t *dwarf,
                          const char *fname,

@@ -374,18 +374,28 @@ static bool do_print(__attribute__((unused)) int argc,
     size_t scope_pc;
 
     target_get_reg(&gDbg->target, RIP, &scope_pc);
-    int reg_no, offset;
-    size_t bytes = 0;
+
+    var_t var;
     if (!dwarf_get_var_symbol_addr(&gDbg->dwarf, scope_pc - gDbg->base_addr,
-                                   var_name, &reg_no, &offset, &bytes))
+                                   var_name, &var))
         return false;
 
     size_t addr;
-    int value;
-    target_get_reg(&gDbg->target, regno_map[reg_no], &addr);
-    target_read_mem(&gDbg->target, &value, bytes, addr + offset);
+    size_t value = 0;
+    switch (var.type) {
+    case VAR_TYPE_REG_OFF:
+        target_get_reg(&gDbg->target, regno_map[var.reg_no], &addr);
+        target_read_mem(&gDbg->target, &value, var.bytes, addr + var.offset);
+        break;
+    case VAR_TYPE_ADDR:
+        target_read_mem(&gDbg->target, &value, var.bytes,
+                        gDbg->base_addr + var.addr);
+        break;
+    default:
+        break;
+    }
 
-    printf("$%ld = %d\n", ++gDbg->print_cnt, value);
+    printf("$%ld = %ld\n", ++gDbg->print_cnt, value);
     return true;
 }
 
