@@ -33,7 +33,7 @@ $(BINARY): $(COBJ) $(LIBDW)
 	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
 
 run: $(BINARY)
-	$(BINARY)
+	$(BINARY) bin/hello
 clean:
 	$(RM) $(COBJ)
 	$(RM) $(BINARY)
