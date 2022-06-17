@@ -47,8 +47,7 @@ break       | Set a breakpoint on tracee
 step        | Step in to the next line of source file
 next        | Step over to the next line of current function
 backtrace   | Unwind stack for the chain of function calls which leads to the current point
-print       | Print current value of a variable
-regs read   | Read a register
+print       | Print current value of a variable or register
 quit        | End the execution of debugger
 
 ## Reference

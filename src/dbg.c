@@ -346,22 +346,51 @@ static bool do_backtrace(__attribute__((unused)) int argc,
     return true;
 }
 
-static bool do_regs_read(int argc, char *argv[])
+static bool dbg_print_reg(dbg_t *dbg, char *reg_name)
 {
     size_t value;
-    char *reg_name = argv[2];
 
-    if (argc != 3)
-        return false;
-
-    bool ret = target_get_reg_by_name(&gDbg->target, reg_name, &value);
+    bool ret = target_get_reg_by_name(&dbg->target, reg_name, &value);
     if (!ret) {
         fprintf(stderr, "Unknown register name '%s'\n", reg_name);
     } else {
-        printf("reg %s = %lx\n", reg_name, value);
+        printf("$%ld = %lx\n", ++dbg->print_cnt, value);
     }
 
     return ret;
+}
+
+
+static bool dbg_print_var(dbg_t *dbg, char *var_name)
+{
+    size_t scope_pc;
+
+    target_get_reg(&dbg->target, RIP, &scope_pc);
+
+    var_t var;
+    if (!dwarf_get_var_symbol_addr(&dbg->dwarf, scope_pc - dbg->base_addr,
+                                   var_name, &var)) {
+        fprintf(stderr, "No symbol \"%s\" in current context.\n", var_name);
+        return false;
+    }
+
+    size_t addr;
+    size_t value = 0;
+    switch (var.type) {
+    case VAR_TYPE_REG_OFF:
+        target_get_reg(&dbg->target, regno_map[var.reg_no], &addr);
+        target_read_mem(&dbg->target, &value, var.bytes, addr + var.offset);
+        break;
+    case VAR_TYPE_ADDR:
+        target_read_mem(&dbg->target, &value, var.bytes,
+                        dbg->base_addr + var.addr);
+        break;
+    default:
+        break;
+    }
+
+    printf("$%ld = %ld\n", ++dbg->print_cnt, value);
+    return true;
 }
 
 static bool do_print(__attribute__((unused)) int argc,
@@ -370,33 +399,16 @@ static bool do_print(__attribute__((unused)) int argc,
     if (argc != 2)
         return false;
 
-    char *var_name = argv[1];
-    size_t scope_pc;
-
-    target_get_reg(&gDbg->target, RIP, &scope_pc);
-
-    var_t var;
-    if (!dwarf_get_var_symbol_addr(&gDbg->dwarf, scope_pc - gDbg->base_addr,
-                                   var_name, &var))
-        return false;
-
-    size_t addr;
-    size_t value = 0;
-    switch (var.type) {
-    case VAR_TYPE_REG_OFF:
-        target_get_reg(&gDbg->target, regno_map[var.reg_no], &addr);
-        target_read_mem(&gDbg->target, &value, var.bytes, addr + var.offset);
-        break;
-    case VAR_TYPE_ADDR:
-        target_read_mem(&gDbg->target, &value, var.bytes,
-                        gDbg->base_addr + var.addr);
-        break;
-    default:
-        break;
+    bool ret;
+    char *str = argv[1];
+    /* A register name should be prefixed with '$' */
+    if (str[0] == '$') {
+        ret = dbg_print_reg(gDbg, str + 1);
+    } else {
+        ret = dbg_print_var(gDbg, str);
     }
 
-    printf("$%ld = %ld\n", ++gDbg->print_cnt, value);
-    return true;
+    return ret;
 }
 
 static bool cmd_maybe(const char *target, const char *src)
@@ -476,11 +488,8 @@ bool dbg_init(dbg_t *dbg, char *cmd)
     dbg_add_cmd(dbg, "step", do_step, "step in to the next line.");
     dbg_add_cmd(dbg, "next", do_next, "step over to the next line.");
     dbg_add_cmd(dbg, "backtrace", do_backtrace, "backtrace the call frame.");
-    /* FIXME: this command is only added for test */
     dbg_add_cmd(dbg, "print", do_print, "dump the request variables.");
 
-    dbg_add_cmd(dbg, "regs", NULL, "dump registers.");
-    dgb_add_option(dbg, "regs", "read", do_regs_read);
     linenoiseSetCompletionCallback(completion);
     return true;
 }
