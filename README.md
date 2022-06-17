@@ -12,7 +12,6 @@ Before everything start, we'll need to clone submodules
 
 ```
 $ git submodule update --init
-
 ```
 
 We may need to install some dependencies to build elfutils, and you'll need to
