@@ -202,6 +202,14 @@ bool target_set_breakpoint(target_t *t, size_t addr)
     return true;
 }
 
+bool target_set_watchpoint(target_t *t, size_t addr)
+{
+    /* TODO */
+    while (1)
+        ;
+    return true;
+}
+
 
 bool target_set_reg(target_t *t, size_t idx, size_t value)
 {

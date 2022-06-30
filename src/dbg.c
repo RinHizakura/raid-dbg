@@ -309,6 +309,25 @@ static bool do_break(int argc, char *argv[])
     size_t addr;
     char *bp_name = argv[1];
 
+    if (!(dbg_set_addr_bp(gDbg, bp_name, &addr))) {
+        fprintf(stderr, "Invalid breakpoint name '%s'\n", bp_name);
+        return false;
+    }
+
+    if (!target_set_watchpoint(&gDbg->target, addr))
+        return false;
+
+    return true;
+}
+
+static bool do_watch(int argc, char *argv[])
+{
+    if (argc != 2)
+        return false;
+
+    size_t addr;
+    char *bp_name = argv[1];
+
     if (!(dbg_set_addr_bp(gDbg, bp_name, &addr)) &&
         !(dbg_set_src_line_bp(gDbg, bp_name, &addr)) &&
         !(dbg_set_symbol_bp(gDbg, bp_name, &addr))) {
@@ -316,7 +335,7 @@ static bool do_break(int argc, char *argv[])
         return false;
     }
 
-    if (!target_set_breakpoint(&gDbg->target, addr))
+    if (!target_set_watchpoint(&gDbg->target, addr))
         return false;
 
     return true;
@@ -484,6 +503,7 @@ bool dbg_init(dbg_t *dbg, char *cmd)
     dbg_add_cmd(dbg, "help", do_help, "print me!");
     dbg_add_cmd(dbg, "cont", do_cont, "restart the stopped tracee process.");
     dbg_add_cmd(dbg, "break", do_break, "set breakpoint on tracee process.");
+    dbg_add_cmd(dbg, "watch", do_watch, "set watchpoint on tracee process.");
     dbg_add_cmd(dbg, "quit", do_quit, "exit from raid debugger.");
     dbg_add_cmd(dbg, "step", do_step, "step in to the next line.");
     dbg_add_cmd(dbg, "next", do_next, "step over to the next line.");

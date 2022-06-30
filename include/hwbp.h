@@ -6,6 +6,7 @@
 
 typedef struct {
     pid_t pid;
+    int index;
     bool is_set;
     size_t addr;
     char addr_key[17];
