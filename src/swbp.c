@@ -1,10 +1,10 @@
-#include "bp.h"
+#include "swbp.h"
 #include <stdio.h>
 #include <string.h>
 #include <sys/ptrace.h>
 #include "arch.h"
 
-void bp_init(bp_t *bp, pid_t pid, size_t addr)
+void swbp_init(swbp_t *bp, pid_t pid, size_t addr)
 {
     bp->pid = pid;
     bp->addr = addr;
@@ -12,7 +12,7 @@ void bp_init(bp_t *bp, pid_t pid, size_t addr)
     snprintf(bp->addr_key, 17, "%lx", bp->addr);
 }
 
-bool bp_set(bp_t *bp)
+bool swbp_set(swbp_t *bp)
 {
     if (bp->is_set)
         return false;
@@ -37,7 +37,7 @@ bool bp_set(bp_t *bp)
     return true;
 }
 
-bool bp_unset(bp_t *bp)
+bool swbp_unset(swbp_t *bp)
 {
     if (!bp->is_set)
         return false;

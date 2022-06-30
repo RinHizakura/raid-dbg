@@ -4,19 +4,20 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <sys/types.h>
-#include "bp.h"
 #include "hashtbl.h"
+#include "swbp.h"
 
 #define MAX_BP 16
 typedef struct {
     bool run;
+    char *cmd;
     pid_t pid;
 
     /* TODO: maintain a better data structure to store multiple
      * breakpoints and access them efficiently.  */
     hashtbl_t tbl;
-    bp_t bp[MAX_BP];
-    bp_t *hit_bp;
+    swbp_t bp[MAX_BP];
+    swbp_t *hit_bp;
     uint16_t bp_bitmap;
 } target_t;
 

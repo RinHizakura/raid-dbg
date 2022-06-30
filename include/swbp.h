@@ -1,5 +1,5 @@
-#ifndef BP_H
-#define BP_H
+#ifndef SW_BP_H
+#define SW_BP_H
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -15,10 +15,10 @@ typedef struct {
     /* The string representation of addr, which is used as
      * key of hash table. */
     char addr_key[17];
-} bp_t;
+} swbp_t;
 
-void bp_init(bp_t *bp, pid_t pid, size_t addr);
-bool bp_set(bp_t *bp);
-bool bp_unset(bp_t *bp);
+void swbp_init(swbp_t *bp, pid_t pid, size_t addr);
+bool swbp_set(swbp_t *bp);
+bool swbp_unset(swbp_t *bp);
 
 #endif

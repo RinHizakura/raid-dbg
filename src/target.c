@@ -11,7 +11,7 @@
 
 static bool target_sigtrap(target_t *t, siginfo_t info)
 {
-    bp_t *bp;
+    swbp_t *bp;
     size_t addr;
     char str[17];
 
@@ -34,7 +34,7 @@ static bool target_sigtrap(target_t *t, siginfo_t info)
 
         if (hashtbl_fetch(&t->tbl, str, (void **) &bp)) {
             t->hit_bp = bp;
-            if (!bp_unset(bp))
+            if (!swbp_unset(bp))
                 return false;
         }
         if (!target_set_reg(t, RIP, addr))
@@ -101,7 +101,7 @@ bool target_lauch(target_t *t, char *cmd)
     t->run = true;
     /* we should guarantee the initial value of breakpoint array */
     t->bp_bitmap = 0xffff;
-    memset(t->bp, 0, sizeof(bp_t) * MAX_BP);
+    memset(t->bp, 0, sizeof(swbp_t) * MAX_BP);
     hashtbl_create(&t->tbl, MAX_BP);
 
     int options = PTRACE_O_EXITKILL;
@@ -122,7 +122,7 @@ static bool target_handle_bp(target_t *t)
     }
 
     // We have to take the bp first to avoid infinite loop
-    bp_t *hit_bp = t->hit_bp;
+    swbp_t *hit_bp = t->hit_bp;
     t->hit_bp = NULL;
 
     size_t addr;
@@ -138,7 +138,7 @@ static bool target_handle_bp(target_t *t)
     }
 
     /* restore the trap instruction before we do cont command */
-    if (!bp_set(hit_bp))
+    if (!swbp_set(hit_bp))
         return false;
 
     return true;
@@ -191,8 +191,8 @@ bool target_set_breakpoint(target_t *t, size_t addr)
     n -= 1;
     t->bp_bitmap &= ~(1 << n);
 
-    bp_init(&t->bp[n], t->pid, addr);
-    if (!bp_set(&t->bp[n]))
+    swbp_init(&t->bp[n], t->pid, addr);
+    if (!swbp_set(&t->bp[n]))
         return false;
 
     if (!hashtbl_add(&t->tbl, t->bp[n].addr_key, &t->bp[n]))
