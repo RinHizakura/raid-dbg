@@ -202,11 +202,31 @@ bool target_set_breakpoint(target_t *t, size_t addr)
     return true;
 }
 
-bool target_set_watchpoint(target_t *t, size_t addr)
+bool target_set_watchpoint(target_t *t, size_t addr, size_t len)
 {
     /* TODO */
-    while (1)
-        ;
+    HWBP_LEN bp_len;
+    switch (len) {
+    case 1:
+        bp_len = ONE_BYTE;
+        break;
+    case 2:
+        bp_len = TWO_BYTE;
+        break;
+    case 4:
+        bp_len = FOUR_BYTE;
+        break;
+    case 8:
+        bp_len = EIGHT_BYTE;
+        break;
+    default:
+        return false;
+    }
+
+    hwbp_init(&t->hwbp, t->pid, addr, bp_len, Write);
+    if (!hwbp_set(&t->hwbp))
+        return false;
+
     return true;
 }
 

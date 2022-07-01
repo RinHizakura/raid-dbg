@@ -9,34 +9,26 @@
  * - https://en.wikipedia.org/wiki/X86_debug_register */
 
 /* FIXME: support more than one debug register */
-void hwbp_init(hwbp_t *bp, pid_t pid, size_t addr)
+void hwbp_init(hwbp_t *bp, pid_t pid, size_t addr, HWBP_LEN len, HWBP_RW rw)
 {
     bp->pid = pid;
     bp->addr = addr;
     bp->is_set = false;
-    bp->index = 0;
+    bp->index = 1;
+    bp->len = len;
+    bp->rw = rw;
     snprintf(bp->addr_key, 17, "%lx", bp->addr);
 }
 
 #ifdef __x86_64__
 
 /* hardware breakpoint is supported only for x86_64 architecture */
-enum hwbp_len {
-    ONE_BYTE = 0b00,
-    TWO_BYTE = 0b01,
-    FOUR_BYTE = 0b11,
-    EIGHT_BYTE = 0b10,
-};
-
-enum hwbp_rw {
-    Execute = 0b00,
-    Read = 0b11,
-    ReadWrite = 0b11,
-    Write = 0b01,
-};
 
 bool hwbp_set(hwbp_t *bp)
 {
+    if (bp->is_set)
+        return false;
+
     // take the debug controll register(DR7)
     size_t dr7;
     if (ptrace(PTRACE_PEEKUSER, bp->pid, offsetof(struct user, u_debugreg[7]),
@@ -45,8 +37,9 @@ bool hwbp_set(hwbp_t *bp)
 
     int index = bp->index;
     unsigned int enable_bit = 1 << (2 * index);
-    unsigned int rw_bit = ReadWrite << (16 + index * 4);
-    unsigned int len_bit = FOUR_BYTE << (18 + index * 4);
+    unsigned int rw_bit = bp->len << (16 + index * 4);
+    unsigned int len_bit = bp->rw << (18 + index * 4);
+
     // check if the local enable bit has been raised already
     if (dr7 & enable_bit)
         return false;
@@ -58,6 +51,7 @@ bool hwbp_set(hwbp_t *bp)
                offsetof(struct user, u_debugreg[index]), bp->addr))
         return false;
 
+
     // update the debug controll register
     if (ptrace(PTRACE_POKEUSER, bp->pid, offsetof(struct user, u_debugreg[7]),
                dr7))
@@ -68,6 +62,8 @@ bool hwbp_set(hwbp_t *bp)
                dr7))
         return false;
 
+    /* FIXME: We should handle error if we fail on the middle process */
+    bp->is_set = true;
     return true;
 }
 #else

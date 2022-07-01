@@ -31,7 +31,7 @@ bool target_runnable(target_t *t);
 bool target_step(target_t *t);
 bool target_conti(target_t *t);
 bool target_set_breakpoint(target_t *t, size_t addr);
-bool target_set_watchpoint(target_t *t, size_t addr);
+bool target_set_watchpoint(target_t *t, size_t addr, size_t len);
 bool target_set_reg(target_t *t, size_t idx, size_t value);
 bool target_get_reg(target_t *t, size_t idx, size_t *value);
 bool target_get_reg_by_name(target_t *t, char *name, size_t *value);

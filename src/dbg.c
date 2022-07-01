@@ -251,7 +251,7 @@ static bool do_next(__attribute__((unused)) int argc,
     return true;
 }
 
-static bool dbg_set_symbol_bp(dbg_t *dbg, char *bp_name, size_t *addr)
+static bool dbg_set_func_symbol_bp(dbg_t *dbg, char *bp_name, size_t *addr)
 {
     if (!dwarf_get_func_symbol_addr(&dbg->dwarf, bp_name, addr))
         return false;
@@ -309,13 +309,34 @@ static bool do_break(int argc, char *argv[])
     size_t addr;
     char *bp_name = argv[1];
 
-    if (!(dbg_set_addr_bp(gDbg, bp_name, &addr))) {
+    if (!(dbg_set_addr_bp(gDbg, bp_name, &addr)) &&
+        !(dbg_set_src_line_bp(gDbg, bp_name, &addr)) &&
+        !(dbg_set_func_symbol_bp(gDbg, bp_name, &addr))) {
         fprintf(stderr, "Invalid breakpoint name '%s'\n", bp_name);
         return false;
     }
 
-    if (!target_set_watchpoint(&gDbg->target, addr))
+    if (!target_set_breakpoint(&gDbg->target, addr))
         return false;
+
+    return true;
+}
+
+static bool dbg_set_var_symbol_bp(dbg_t *dbg, char *bp_name, var_t *var)
+{
+    size_t scope_pc;
+    target_get_reg(&dbg->target, RIP, &scope_pc);
+
+    if (!dwarf_get_var_symbol_addr(&dbg->dwarf, scope_pc - dbg->base_addr,
+                                   bp_name, var)) {
+        fprintf(stderr, "No symbol \"%s\" in current context.\n", bp_name);
+        return false;
+    }
+
+    if (var->type != VAR_TYPE_ADDR) {
+        fprintf(stderr, "\"%s\" can't be watched", bp_name);
+        return false;
+    }
 
     return true;
 }
@@ -325,18 +346,18 @@ static bool do_watch(int argc, char *argv[])
     if (argc != 2)
         return false;
 
-    size_t addr;
     char *bp_name = argv[1];
-
-    if (!(dbg_set_addr_bp(gDbg, bp_name, &addr)) &&
-        !(dbg_set_src_line_bp(gDbg, bp_name, &addr)) &&
-        !(dbg_set_symbol_bp(gDbg, bp_name, &addr))) {
-        fprintf(stderr, "Invalid breakpoint name '%s'\n", bp_name);
+    var_t var;
+    if (!(dbg_set_var_symbol_bp(gDbg, bp_name, &var))) {
+        fprintf(stderr, "Invalid watch point name '%s'\n", bp_name);
         return false;
     }
 
-    if (!target_set_watchpoint(&gDbg->target, addr))
+    if (!target_set_watchpoint(&gDbg->target, var.addr + gDbg->base_addr,
+                               var.bytes)) {
+        fprintf(stderr, "Set watch point on '%s' fail\n", bp_name);
         return false;
+    }
 
     return true;
 }

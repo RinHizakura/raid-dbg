@@ -25,7 +25,6 @@ bool swbp_set(swbp_t *bp)
     }
 
     bp->orig_instr = instr;
-    bp->is_set = true;
 
     memcpy(&instr, INT3, sizeof(INT3));
 
@@ -34,6 +33,9 @@ bool swbp_set(swbp_t *bp)
         perror("ptrace_poke");
         return false;
     }
+
+    /* FIXME: We should handle error if we fail on the middle process */
+    bp->is_set = true;
     return true;
 }
 
