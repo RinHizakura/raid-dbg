@@ -40,6 +40,12 @@ static bool target_sigtrap(target_t *t, siginfo_t info)
         if (!target_set_reg(t, RIP, addr))
             return false;
         return true;
+    case TRAP_HWBKPT:
+        /* We know that hardware breakpoint is only used as watchpoint ourself,
+         * so we just handle signal based on this premise directly */
+        if (hwbp_handle(&t->hwbp))
+            return false;
+        return true;
     default:
         /* FIXME: If we are not here because of single step, then we assume
          * the only left reason for the trap is when hitting software

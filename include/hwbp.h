@@ -34,6 +34,7 @@ typedef struct {
 
 void hwbp_init(hwbp_t *bp, pid_t pid, size_t addr, HWBP_LEN len, HWBP_RW rw);
 bool hwbp_set(hwbp_t *bp);
+bool hwbp_handle(hwbp_t *bp);
 bool hwbp_unset(hwbp_t *bp);
 
 #endif

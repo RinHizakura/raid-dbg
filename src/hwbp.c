@@ -37,8 +37,8 @@ bool hwbp_set(hwbp_t *bp)
 
     int index = bp->index;
     unsigned int enable_bit = 1 << (2 * index);
-    unsigned int rw_bit = bp->len << (16 + index * 4);
-    unsigned int len_bit = bp->rw << (18 + index * 4);
+    unsigned int rw_bit = bp->rw << (16 + index * 4);
+    unsigned int len_bit = bp->len << (18 + index * 4);
 
     // check if the local enable bit has been raised already
     if (dr7 & enable_bit)
@@ -59,11 +59,28 @@ bool hwbp_set(hwbp_t *bp)
 
     // clear DR6 immediately before returning.
     if (ptrace(PTRACE_POKEUSER, bp->pid, offsetof(struct user, u_debugreg[6]),
-               dr7))
+               0))
         return false;
 
     /* FIXME: We should handle error if we fail on the middle process */
     bp->is_set = true;
+    return true;
+}
+
+bool hwbp_handle(hwbp_t *bp)
+{
+    size_t dr6;
+    if (ptrace(PTRACE_PEEKUSER, bp->pid, offsetof(struct user, u_debugreg[6]),
+               &dr6))
+        return false;
+
+    dr6 &= ~(1 << bp->index);
+
+    // clear DR6 for the next hit of watchpoint
+    if (ptrace(PTRACE_POKEUSER, bp->pid, offsetof(struct user, u_debugreg[6]),
+               dr6))
+        return false;
+
     return true;
 }
 #else
