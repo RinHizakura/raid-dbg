@@ -287,12 +287,11 @@ bool dwarf_get_var_symbol_addr(dwarf_t *dwarf,
     Dwarf_Die die_result;
     Dwarf_Attribute attr_result;
 
-    found = dwarf_get_global_var_symbol_addr(dwarf, name, &die_result);
-
     /* We need to consider the current scope to pick only
      * the visible variable, so the input parameters including scope_pc. */
-    if (!found &&
-        !dwarf_get_local_var_symbol_addr(dwarf, scope_pc, name, &die_result))
+    found = dwarf_get_local_var_symbol_addr(dwarf, scope_pc, name, &die_result);
+
+    if (!found && !dwarf_get_global_var_symbol_addr(dwarf, name, &die_result))
         return false;
 
     if (!dwarf_attr(&die_result, DW_AT_location, &attr_result))
