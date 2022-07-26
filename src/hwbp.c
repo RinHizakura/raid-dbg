@@ -44,15 +44,14 @@ bool hwbp_set(hwbp_t *bp)
     if (dr7 & enable_bit)
         return false;
 
-    dr7 = dr7 | enable_bit | rw_bit | len_bit;
 
     // set address to breakpoint register according to index
     if (ptrace(PTRACE_POKEUSER, bp->pid,
                offsetof(struct user, u_debugreg[index]), bp->addr))
         return false;
 
-
     // update the debug controll register
+    dr7 = dr7 | enable_bit | rw_bit | len_bit;
     if (ptrace(PTRACE_POKEUSER, bp->pid, offsetof(struct user, u_debugreg[7]),
                dr7))
         return false;
