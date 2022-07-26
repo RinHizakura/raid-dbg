@@ -34,5 +34,7 @@ int main()
     print_int("hello happy world", minus(4, 2));
     print_int("ans", calc(4, 2, gNum));
     gNum = 878;
+
+    printf("Before return...\n");
     return 0;
 }

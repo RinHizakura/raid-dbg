@@ -37,8 +37,11 @@ bool hwbp_set(hwbp_t *bp)
 
     int index = bp->index;
     unsigned int enable_bit = 1 << (2 * index);
-    unsigned int rw_bit = bp->rw << (16 + index * 4);
-    unsigned int len_bit = bp->len << (18 + index * 4);
+    unsigned int rw_shift = 16 + index * 4;
+    unsigned int len_shift = 18 + index * 4;
+    unsigned int rw_bit = 0b11 << rw_shift;
+    unsigned int len_bit = 0b11 << len_shift;
+
 
     // check if the local enable bit has been raised already
     if (dr7 & enable_bit)
@@ -51,7 +54,8 @@ bool hwbp_set(hwbp_t *bp)
         return false;
 
     // update the debug controll register
-    dr7 = dr7 | enable_bit | rw_bit | len_bit;
+    dr7 &= ~(rw_bit | len_bit);
+    dr7 |= enable_bit | (bp->rw << rw_shift) | (bp->len << len_shift);
     if (ptrace(PTRACE_POKEUSER, bp->pid, offsetof(struct user, u_debugreg[7]),
                dr7))
         return false;
