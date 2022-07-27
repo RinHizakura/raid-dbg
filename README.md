@@ -44,6 +44,7 @@ Command     | Description
 help        | List all of the supported command of raid
 cont        | restart tracee until it hits a breakpoint or finishes execution
 break       | Set a breakpoint on tracee
+watch       | Watch a variable when it is modified
 step        | Step in to the next line of source file
 next        | Step over to the next line of current function
 backtrace   | Unwind stack for the chain of function calls which leads to the current point
